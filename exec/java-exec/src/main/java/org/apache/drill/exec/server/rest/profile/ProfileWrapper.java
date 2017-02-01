@@ -118,6 +118,10 @@ public class ProfileWrapper {
     return id;
   }
 
+  public String getPlanningDuration() {
+    return ProfileResources.getPrettyDuration(profile.getStart(), profile.getPlanEnd());
+  }
+
   public List<FragmentWrapper> getFragmentProfiles() {
     return fragmentProfiles;
   }
