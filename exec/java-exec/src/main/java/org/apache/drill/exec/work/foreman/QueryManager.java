@@ -68,17 +68,6 @@ import com.google.common.collect.Maps;
 public class QueryManager implements AutoCloseable {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(QueryManager.class);
 
-  public static final PersistentStoreConfig<QueryProfile> QUERY_PROFILE = PersistentStoreConfig.
-          newProtoBuilder(SchemaUserBitShared.QueryProfile.WRITE, SchemaUserBitShared.QueryProfile.MERGE)
-      .name("profiles")
-      .blob()
-      .build();
-
-  public static final TransientStoreConfig<QueryInfo> RUNNING_QUERY_INFO = TransientStoreConfig
-      .newProtoBuilder(SchemaUserBitShared.QueryInfo.WRITE, SchemaUserBitShared.QueryInfo.MERGE)
-      .name("running")
-      .build();
-
   private final Map<DrillbitEndpoint, NodeTracker> nodeMap = Maps.newHashMap();
   private final QueryId queryId;
   private final String stringQueryId;
@@ -93,8 +82,8 @@ public class QueryManager implements AutoCloseable {
       new IntObjectHashMap<>();
   private final List<FragmentData> fragmentDataSet = Lists.newArrayList();
 
-  private final PersistentStore<QueryProfile> profileStore;
-  private final TransientStore<QueryInfo> transientProfiles;
+  private final PersistentStore<QueryProfile> completedProfileStore;
+  private final TransientStore<QueryInfo> runningProfileStore;
 
   // the following mutable variables are used to capture ongoing query status
   private String planText;
@@ -119,12 +108,9 @@ public class QueryManager implements AutoCloseable {
     this.foreman = foreman;
 
     stringQueryId = QueryIdHelper.getQueryId(queryId);
-    try {
-      profileStore = storeProvider.getOrCreateStore(QUERY_PROFILE);
-    } catch (final Exception e) {
-      throw new DrillRuntimeException(e);
-    }
-    transientProfiles = coordinator.getOrCreateTransientStore(RUNNING_QUERY_INFO);
+
+    this.completedProfileStore = foreman.getQueryContext().getProfileStoreContext().getCompletedProfileStore();
+    this.runningProfileStore = foreman.getQueryContext().getProfileStoreContext().getRunningProfileStore();
   }
 
   private static boolean isTerminal(final FragmentState state) {
@@ -298,7 +284,7 @@ public class QueryManager implements AutoCloseable {
       case STARTING:
       case RUNNING:
       case CANCELLATION_REQUESTED:
-        transientProfiles.put(stringQueryId, getQueryInfo());  // store as ephemeral query profile.
+        runningProfileStore.put(stringQueryId, getQueryInfo());  // store as ephemeral query profile.
         inTransientStore = true;
         break;
 
@@ -306,7 +292,7 @@ public class QueryManager implements AutoCloseable {
       case CANCELED:
       case FAILED:
         try {
-          transientProfiles.remove(stringQueryId);
+          runningProfileStore.remove(stringQueryId);
           inTransientStore = false;
         } catch(final Exception e) {
           logger.warn("Failure while trying to delete the estore profile for this query.", e);
@@ -321,7 +307,7 @@ public class QueryManager implements AutoCloseable {
   void writeFinalProfile(UserException ex) {
     try {
       // TODO(DRILL-2362) when do these ever get deleted?
-      profileStore.put(stringQueryId, getQueryProfile(ex));
+      completedProfileStore.put(stringQueryId, getQueryProfile(ex));
     } catch (Exception e) {
       logger.error("Failure while storing Query Profile", e);
     }
