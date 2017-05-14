@@ -21,9 +21,12 @@ import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.proto.UserBitShared;
+import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.work.foreman.QueryManager;
 
 import javax.annotation.Nullable;
+
+import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.Iterator;
 import java.util.Map;
@@ -35,8 +38,10 @@ public class ProfileIterator implements Iterator<Object> {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ProfileIterator.class);
 
   private final Iterator<ProfileInfo> itr;
+  private final DrillbitContext dbitContext;
 
   public ProfileIterator(FragmentContext context) {
+    dbitContext = context.getDrillbitContext();
     itr = iterateProfileInfo(context);
   }
 
@@ -44,13 +49,12 @@ public class ProfileIterator implements Iterator<Object> {
     try {
       PersistentStore<UserBitShared.QueryProfile> profiles = context
           .getDrillbitContext()
-          .getStoreProvider()
-          .getOrCreateStore(QueryManager.QUERY_PROFILE);
+          .getProfileStoreContext().getCompletedProfileStore();
 
       return transform(profiles.getAll());
 
     } catch (Exception e) {
-      logger.error(String.format("Unable to get persistence store: %s, ", QueryManager.QUERY_PROFILE.getName()), e);
+      logger.error(String.format("Unable to get persistence store: %s, ", context.getDrillbitContext().getProfileStoreContext().getCompletedProfileStore()), e);
       return Iterators.singletonIterator(ProfileInfo.getDefault());
     }
   }
@@ -73,6 +77,13 @@ public class ProfileIterator implements Iterator<Object> {
         long planningTime = (input.getValue().getPlanEnd() > 0) ? input.getValue().getPlanEnd() - input.getValue().getStart() : 0L;
         long enqueueTime = (input.getValue().getQueueWaitEnd() > 0) ? input.getValue().getQueueWaitEnd() - input.getValue().getPlanEnd() : 0L;
         long executionTime = input.getValue().getEnd() - (input.getValue().getQueueWaitEnd() > 0 ? input.getValue().getQueueWaitEnd() : input.getValue().getPlanEnd());
+        String profileJson = "";
+        try {
+          profileJson = new String(dbitContext.getProfileStoreContext().getProfileStoreConfig().getSerializer().serialize(input.getValue()));
+        } catch (IOException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
 
         return new ProfileInfo(queryID,
             input.getValue().getForeman().getAddress(),
@@ -84,7 +95,8 @@ public class ProfileIterator implements Iterator<Object> {
             input.getValue().getEnd() - input.getValue().getStart(),
             input.getValue().getUser(),
             input.getValue().getQuery(),
-            input.getValue().getState().name()
+            input.getValue().getState().name(),
+            profileJson
             );
       }
 
@@ -127,8 +139,10 @@ public class ProfileIterator implements Iterator<Object> {
     public final String user;
     public final String query;
     public final String state;
+    public final String json;
 
-    public ProfileInfo(String query_id, String link, Timestamp time, long planningTime, long enqueueTime, long executionTime, long latency, String user, String query, String state) {
+    //TODO: JSON Obj?
+    public ProfileInfo(String query_id, String link, Timestamp time, long planningTime, long enqueueTime, long executionTime, long latency, String user, String query, String state, String json) {
       this.query_id = query_id;
       this.link = link;
       this.time = time;
@@ -139,10 +153,11 @@ public class ProfileIterator implements Iterator<Object> {
       this.user = user;
       this.query = query;
       this.state = state;
+      this.json = json;
     }
 
     private ProfileInfo() {
-      this("UNKNOWN", "UNKNOWN", new Timestamp(0L), 0L, 0L, 0L, 0L, "UNKNOWN", "UNKNOWN", "UNKNOWN");
+      this("UNKNOWN", "UNKNOWN", new Timestamp(0L), 0L, 0L, 0L, 0L, "UNKNOWN", "UNKNOWN", "UNKNOWN", "");
     }
 
     /**
