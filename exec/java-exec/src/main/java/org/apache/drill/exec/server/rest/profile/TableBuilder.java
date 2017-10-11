@@ -21,6 +21,7 @@ import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
@@ -118,15 +119,18 @@ public class TableBuilder {
   }
 
   public void appendTime(final long d) {
-    appendCell(dateFormat.format(d), null, null);
+    appendTime(d, null);
   }
 
   public void appendTime(final long d, final String link) {
-    appendCell(dateFormat.format(d), link, null);
+    appendTime(d, link, null);
   }
 
   public void appendTime(final long d, final String link, final String tooltip) {
-    appendCell(dateFormat.format(d), link, tooltip);
+    //Embedding dataTable's data-order attribute
+    Map<String, String> attributeMap = new HashMap<String, String>();
+    attributeMap.put("data-order", String.valueOf(d));
+    appendCell(dateFormat.format(d), link, tooltip, null, attributeMap);
   }
 
   public void appendMillis(final long p) {
@@ -138,7 +142,10 @@ public class TableBuilder {
   }
 
   public void appendMillis(final long p, final String link, final String tooltip) {
-    appendCell((new SimpleDurationFormat(0, p)).compact(), link, tooltip);
+    //Embedding dataTable's data-order attribute
+    Map<String, String> attributeMap = new HashMap<String, String>();
+    attributeMap.put("data-order", String.valueOf(p));
+    appendCell((new SimpleDurationFormat(0, p)).compact(), link, tooltip, null, attributeMap);
   }
 
   public void appendNanos(final long p) {
