@@ -22,6 +22,7 @@ import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
+import java.util.Map;
 
 public class TableBuilder {
   private final NumberFormat format = NumberFormat.getInstance(Locale.US);
@@ -71,16 +72,35 @@ public class TableBuilder {
   }
 
   public void appendCell(final String s, final String link, final String titleText, final String backgroundColor) {
+    appendCell(s, link, titleText, backgroundColor, null);
+  }
+
+  public void appendCell(final String s, final Map<String, String> kvPairs) {
+    appendCell(s, null, null, null, kvPairs);
+  }
+
+  public void appendCell(final String s, final String link, final String titleText, final String backgroundColor,
+      final Map<String, String> kvPairs) {
     if (w == 0) {
       sb.append("<tr"
           + (backgroundColor == null ? "" : " style=\"background-color:"+backgroundColor+"\"")
           + ">");
     }
+    StringBuilder tdElemSB = new StringBuilder("<td");
+    //Injecting title if specified (legacy impl)
     if (titleText != null && titleText.length() > 0) {
-      sb.append(String.format("<td title=\""+titleText+"\">%s%s</td>", s, link != null ? link : ""));
-    } else {
-      sb.append(String.format("<td>%s%s</td>", s, link != null ? link : ""));
+      tdElemSB.append(" title=\""+titleText+"\"");
     }
+    //Extract other attributes for injection into element
+    if (kvPairs != null) {
+      for (String attributeName : kvPairs.keySet()) {
+        String attributeText = " " + attributeName + "=\"" + kvPairs.get(attributeName) + "\"";
+        tdElemSB.append(attributeText);
+      }
+    }
+    //Closing <td>
+    tdElemSB.append(String.format(">%s%s</td>", s, link != null ? link : ""));
+    sb.append(tdElemSB);
     if (++w >= width) {
       sb.append("</tr>\n");
       w = 0;
