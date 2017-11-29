@@ -63,8 +63,6 @@ abstract class DrillPreparedStatementImpl extends AvaticaPreparedStatement
     }
   }
 
-
-
   /**
    * Throws AlreadyClosedSqlException <i>iff</i> this PreparedStatement is closed.
    *
