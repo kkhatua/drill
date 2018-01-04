@@ -178,7 +178,6 @@ public class StatementTest extends JdbcTestBase {
   /**
    * Test setting timeout for a query that actually times out because of lack of timely server response
    */
-  @Ignore ( "Waiting for DRILL-5973" )
   @Test ( expected = SqlTimeoutException.class )
   public void testServerTriggeredQueryTimeout() throws Exception {
     //Setting to a very low value (2sec)
@@ -188,16 +187,13 @@ public class StatementTest extends JdbcTestBase {
     //Additional time for JDBC timeout and server pauses to complete
     int cleanupPause = 3;
 
-    /* TODO: Enable if DRILL-5973 is checked in
     //Simulate a lack of timely server response by injecting a pause in the Screen operator's sending-data RPC
     final String controls = Controls.newBuilder()
         .addTimedPause(ScreenCreator.class, "sending-data", 0, TimeUnit.SECONDS.toMillis(serverPause))
         .build();
-    */
 
     //Fetching an exclusive connection since injected pause affects all sessions on the connection
     try ( Connection exclusiveConnection = new Driver().connect( "jdbc:drill:zk=local", null )) {
-      /* TODO: Enable if DRILL-5973 is checked in
       try(Statement stmt = exclusiveConnection.createStatement()) {
         assertThat(
             stmt.execute(String.format(
@@ -205,7 +201,6 @@ public class StatementTest extends JdbcTestBase {
                 ExecConstants.DRILLBIT_CONTROL_INJECTIONS, controls)),
             equalTo(true));
       }
-      */
 
       try(Statement stmt = exclusiveConnection.createStatement()) {
         stmt.setQueryTimeout(timeoutDuration);
