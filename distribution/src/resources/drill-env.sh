@@ -38,16 +38,22 @@
 # or a more specialized form.
 
 # Amount of heap memory for the Drillbit process. Values are those supported by
-# the Java -Xms option. The default is 4G.
+# the Java -Xms option. The recommended minimum is 4G.
 
 #export DRILL_HEAP=${DRILL_HEAP:-"4G"}
 
 # Maximum amount of direct memory to allocate to the Drillbit in the format
-# supported by -XX:MaxDirectMemorySize. Default is 8G.
+# supported by -XX:MaxDirectMemorySize. The recommended minimum is 8G.
 
 #export DRILL_MAX_DIRECT_MEMORY=${DRILL_MAX_DIRECT_MEMORY:-"8G"}
 
+# Value for the code cache size for the Drillbit. Because the Drillbit generates
+# code, it benefits from a large cache. The recommended minimum is 1G.
+
+#export DRILLBIT_CODE_CACHE_SIZE=${DRILLBIT_CODE_CACHE_SIZE:-"1G"}
+
 # Value for the JVM -XX:MaxPermSize option for the Drillbit. Default is 512M.
+# Ignored in JDK8+
 
 #export DRILLBIT_MAX_PERM=${DRILLBIT_MAX_PERM:-"512M"}
 
@@ -56,11 +62,6 @@
 # The old form is not compatible with Drill-on-YARN.
 
 # export DRILL_JAVA_LIB_PATH="<lib1>:<lib2>"
-
-# Value for the code cache size for the Drillbit. Because the Drillbit generates
-# code, it benefits from a large cache. Default is 1G.
-
-#export DRILLBIT_CODE_CACHE_SIZE=${DRILLBIT_CODE_CACHE_SIZE:-"1G"}
 
 # Provide a customized host name for when the default mechanism is not accurate
 
