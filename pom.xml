@@ -63,7 +63,7 @@
     <msgpack.version>0.6.6</msgpack.version>
     <reflections.version>0.9.8</reflections.version>
     <excludedGroups></excludedGroups>
-    <memoryMb>4096</memoryMb>
+    <memoryMb>1024</memoryMb>
   </properties>
 
   <scm>
@@ -466,7 +466,7 @@
               -Dorg.apache.drill.exec.server.Drillbit.system_options="org.apache.drill.exec.compile.ClassTransformer.scalar_replacement=on"
               -Ddrill.test.query.printing.silent=true
               -Ddrill.catastrophic_to_standard_out=true
-              -XX:MaxPermSize=512M -XX:MaxDirectMemorySize=3072M
+              -XX:MaxPermSize=512M -XX:MaxDirectMemorySize=3g
               -Djava.net.preferIPv4Stack=true
               -Djava.awt.headless=true
               -XX:+CMSClassUnloadingEnabled -ea
