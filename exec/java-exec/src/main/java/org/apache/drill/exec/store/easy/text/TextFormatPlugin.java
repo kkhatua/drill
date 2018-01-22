@@ -85,10 +85,10 @@ public class TextFormatPlugin extends EasyFormatPlugin<TextFormatPlugin.TextForm
 
     if (context.getOptions().getOption(ExecConstants.ENABLE_NEW_TEXT_READER_KEY).bool_val == true) {
       TextParsingSettings settings = new TextParsingSettings();
-      settings.set((TextFormatConfig)formatConfig);
+      settings.set(formatConfig);
       return new CompliantTextRecordReader(split, dfs, context, settings, columns);
     } else {
-      char delim = ((TextFormatConfig)formatConfig).getFieldDelimiter();
+      char delim = formatConfig.getFieldDelimiter();
       return new DrillTextRecordReader(split, dfs.getConf(), context, delim, columns);
     }
   }
@@ -120,10 +120,12 @@ public class TextFormatPlugin extends EasyFormatPlugin<TextFormatPlugin.TextForm
     String fragmentId = String.format("%d_%d", handle.getMajorFragmentId(), handle.getMinorFragmentId());
     options.put("prefix", fragmentId);
 
-    options.put("separator", ((TextFormatConfig)getConfig()).getFieldDelimiterAsString());
+    options.put("separator", getConfig().getFieldDelimiterAsString());
     options.put(FileSystem.FS_DEFAULT_NAME_KEY, ((FileSystemConfig)writer.getStorageConfig()).connection);
 
-    options.put("extension", ((TextFormatConfig)getConfig()).getExtensions().get(0));
+    options.put("extension", getConfig().getExtensions().get(0));
+
+    options.put("enclosingQuotes"/*TODO constant*/, getConfig().getFieldDelimiterAsString() /*getStringDelimiter()*/);
 
     RecordWriter recordWriter = new DrillTextRecordWriter(context.getAllocator(), writer.getStorageStrategy());
     recordWriter.init(options);
@@ -134,6 +136,7 @@ public class TextFormatPlugin extends EasyFormatPlugin<TextFormatPlugin.TextForm
   @JsonTypeName("text") @JsonInclude(Include.NON_DEFAULT)
   public static class TextFormatConfig implements FormatPluginConfig {
 
+    //TODO Use quote/escape
     public List<String> extensions = ImmutableList.of();
     public String lineDelimiter = "\n";
     public char fieldDelimiter = '\n';

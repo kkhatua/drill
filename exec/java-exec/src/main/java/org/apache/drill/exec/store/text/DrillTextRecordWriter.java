@@ -56,6 +56,10 @@ public class DrillTextRecordWriter extends StringOutputRecordWriter {
   private boolean fRecordStarted = false; // true once the startRecord() is called until endRecord() is called
   private StringBuilder currentRecord; // contains the current record separated by field delimiter
 
+  //TODO
+//  private Map?
+  private boolean enclosingQuotes;
+
   public DrillTextRecordWriter(BufferAllocator allocator, StorageStrategy storageStrategy) {
     super(allocator);
     this.storageStrategy = storageStrategy == null ? StorageStrategy.DEFAULT : storageStrategy;
@@ -67,6 +71,7 @@ public class DrillTextRecordWriter extends StringOutputRecordWriter {
     this.prefix = writerOptions.get("prefix");
     this.fieldDelimiter = writerOptions.get("separator");
     this.extension = writerOptions.get("extension");
+    this.enclosingQuotes = /*Boolean.parseBoolean(writerOptions.get("enclosingQuotes"));*/ true;
 
     Configuration conf = new Configuration();
     conf.set(FileSystem.FS_DEFAULT_NAME_KEY, writerOptions.get(FileSystem.FS_DEFAULT_NAME_KEY));
@@ -108,7 +113,11 @@ public class DrillTextRecordWriter extends StringOutputRecordWriter {
 
   @Override
   public void addField(int fieldId, String value) throws IOException {
-    currentRecord.append(value + fieldDelimiter);
+    //TODO: Use a Map to switch between fields to write?
+    /*if (BitMapValueBasedOn enclosingQuotes ? )
+      currentRecord.append('"').append(value).append('"').append(fieldDelimiter);
+    else*/
+    currentRecord.append(value).append(fieldDelimiter);
   }
 
   @Override
