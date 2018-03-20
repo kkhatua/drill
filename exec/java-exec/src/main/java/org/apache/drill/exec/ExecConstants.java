@@ -587,6 +587,8 @@ public final class ExecConstants {
   public static final String USE_DYNAMIC_UDFS_KEY = "exec.udf.use_dynamic";
   public static final BooleanValidator USE_DYNAMIC_UDFS = new BooleanValidator(USE_DYNAMIC_UDFS_KEY);
 
+  //TODO
+  public static final String QUERY_TIMEOUT = "drill.exec.query.timeout" ;
   public static final String QUERY_TRANSIENT_STATE_UPDATE_KEY = "exec.query.progress.update";
   public static final BooleanValidator QUERY_TRANSIENT_STATE_UPDATE = new BooleanValidator(QUERY_TRANSIENT_STATE_UPDATE_KEY);
 
