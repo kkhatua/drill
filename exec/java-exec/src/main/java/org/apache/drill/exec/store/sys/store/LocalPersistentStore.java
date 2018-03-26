@@ -38,9 +38,9 @@ import javax.annotation.Nullable;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.drill.common.collections.ImmutableEntry;
+import org.apache.drill.common.concurrent.AutoCloseableLock;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.exec.ExecConstants;
-import org.apache.drill.exec.exception.VersionMismatchException;
 import org.apache.drill.exec.store.dfs.DrillFileSystem;
 import org.apache.drill.exec.store.sys.BasePersistentStore;
 import org.apache.drill.exec.store.sys.PersistentStoreConfig;
@@ -64,10 +64,7 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalPersistentStore.class);
 
-  private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
-  private final AutoCloseableLock readLock = new AutoCloseableLock(readWriteLock.readLock());
-  private final AutoCloseableLock writeLock = new AutoCloseableLock(readWriteLock.writeLock());
-  private final AutoCloseableLock readCachedProfilesLock = new AutoCloseableLock(new ReentrantLock());
+  private final AutoCloseableLock readCachedProfilesLock = new AutoCloseableLock(new ReentrantReadWriteLock().readLock());
 
   //Provides a threshold above which we report the time to load
   private static final long RESPONSE_TIME_THRESHOLD_MSEC = 2000L;
@@ -208,7 +205,8 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
 
     logger.info("Requesting thread: {}-{}" , Thread.currentThread().getName(), Thread.currentThread().getId());
     //Acquiring lock to avoid reloading for request coming in before completion of profile read
-    try (AutoCloseableLock lock = readCachedProfilesLock.open()) {
+    //TODO Do we need a lock?
+    try (AutoCloseableLock lock = (AutoCloseableLock) readCachedProfilesLock.open()) {
       try {
         long expectedFileCount = fs.getFileStatus(basePath).getLen();
         logger.debug("Current ModTime: {} (Last known ModTime: {})", currBasePathModified, basePathLastModified);
@@ -280,18 +278,6 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
-
-      Collections.sort(files);
-
-      return Iterables.transform(Iterables.limit(Iterables.skip(files, skip), take), new Function<String, Entry<String, V>>() {
-        @Nullable
-        @Override
-        public Entry<String, V> apply(String key) {
-          return new ImmutableEntry<>(key, get(key));
-        }
-      }).iterator();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
     }
   }
 
@@ -303,7 +289,7 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
       try {
         if (fs.isDirectory(archivePath)) {
           int archivedCount = 0;
-          archiveWatch.reset().start(); //Clockig
+          archiveWatch.reset().start(); //Clocking
           while (archivedCount < archivalRate) {
             String toArchive = pendingArchivalSet.pollLast() + DRILL_SYS_FILE_SUFFIX;
             boolean renameStatus = DrillFileSystemUtil.rename(fs, new Path(basePath, toArchive), new Path(archivePath, toArchive));
