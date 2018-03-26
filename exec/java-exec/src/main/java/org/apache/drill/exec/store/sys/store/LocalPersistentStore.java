@@ -283,7 +283,8 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
 
   private void archiveProfiles(DrillFileSystem fs, int profilesInStoreCount) {
     if (profilesInStoreCount > archivalThreshold) {
-      int pendingArchivalCount = profilesInStoreCount - archivalThreshold;
+      //We'll attempt to reduce to 90% of threshold, but in batches of archivalRate
+      int pendingArchivalCount = profilesInStoreCount - (int) Math.round(0.9*archivalThreshold);
       logger.info("Found {} excess profiles. For now, will attempt archiving {} profiles to {}", pendingArchivalCount
           , Math.min(pendingArchivalCount, archivalRate), archivePath);
       try {
