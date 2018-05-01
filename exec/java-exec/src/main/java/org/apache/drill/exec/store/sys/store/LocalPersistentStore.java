@@ -60,14 +60,11 @@ import com.google.common.base.Stopwatch;
 import com.google.common.collect.Iterables;
 
 public class LocalPersistentStore<V> extends BasePersistentStore<V> {
-  private static final String ARCHIVE_LOCATION = "archived";
-
   private static final Logger logger = LoggerFactory.getLogger(LocalPersistentStore.class);
-
-  private final AutoCloseableLock readCachedProfilesLock = new AutoCloseableLock(new ReentrantReadWriteLock().readLock());
 
   //Provides a threshold above which we report the time to load
   private static final long RESPONSE_TIME_THRESHOLD_MSEC = 2000L;
+  private static final String ARCHIVE_LOCATION = "archived";
 
   private static final int drillSysFileExtSize = DRILL_SYS_FILE_SUFFIX.length();
   private final Path basePath;
@@ -204,80 +201,77 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
     }
 
     logger.info("Requesting thread: {}-{}" , Thread.currentThread().getName(), Thread.currentThread().getId());
-    //Acquiring lock to avoid reloading for request coming in before completion of profile read
-    //TODO Do we need a lock?
-    try (AutoCloseableLock lock = (AutoCloseableLock) readCachedProfilesLock.open()) {
-      try {
-        long expectedFileCount = fs.getFileStatus(basePath).getLen();
-        logger.debug("Current ModTime: {} (Last known ModTime: {})", currBasePathModified, basePathLastModified);
-        logger.debug("Expected {} files (Last known {} files)", expectedFileCount, lastKnownFileCount);
+    //No need to acquire lock since incoming requests are synchronized
+    try {
+      long expectedFileCount = fs.getFileStatus(basePath).getLen();
+      logger.debug("Current ModTime: {} (Last known ModTime: {})", currBasePathModified, basePathLastModified);
+      logger.debug("Expected {} files (Last known {} files)", expectedFileCount, lastKnownFileCount);
 
-        //Force-read list of profiles based on change of any of the 3 states
-        if (this.basePathLastModified < currBasePathModified  //Has ModificationTime changed?
-            || this.lastKnownFileCount != expectedFileCount   //Has Profile Count changed?
-            || (skip + take) > maxSetCapacity ) {             //Does requestSize exceed current cached size
+      //Force-read list of profiles based on change of any of the 3 states
+      if (this.basePathLastModified < currBasePathModified  //Has ModificationTime changed?
+          || this.lastKnownFileCount != expectedFileCount   //Has Profile Count changed?
+          || (skip + take) > maxSetCapacity ) {             //Does requestSize exceed current cached size
 
-          if (maxSetCapacity < (skip + take)) {
-            logger.debug("Updating last Max Capacity from {} to {}", maxSetCapacity , (skip + take) );
-            maxSetCapacity = skip + take;
-          }
-          //Mark Start Time
-          listAndBuildWatch.reset().start();
-
-          //Listing ALL DrillSysFiles
-          //Can apply MostRecentProfile name as filter. Unfortunately, Hadoop (2.7.1) currently doesn't leverage this to speed up
-          List<FileStatus> fileStatuses = DrillFileSystemUtil.listFiles(fs, basePath, false,
-              sysFileSuffixFilter
-              );
-          //Checking if empty
-          if (fileStatuses.isEmpty()) {
-            //WithoutFilter::
-            return Collections.emptyIterator();
-          }
-          //Force a reload of the profile.
-          //Note: We shouldn't need to do this if the load is incremental (i.e. using mostRecentProfile)
-          profilesSet.clear();
-          profilesSetSize = 0;
-          int profilesInStoreCount = 0;
-
-          if (enableArchiving) {
-            pendingArchivalSet.clear();
-            pendingArchivalSetSize = 0;
-          }
-
-          //Constructing TreeMap from List
-          for (FileStatus stat : fileStatuses) {
-            String profileName = stat.getPath().getName();
-            profilesSetSize = addToProfileSet(profileName, profilesSetSize, maxSetCapacity);
-            profilesInStoreCount++;
-          }
-
-          //Archive older profiles
-          if (enableArchiving) {
-            archiveProfiles(fs, profilesInStoreCount);
-          }
-
-          //Report Lag
-          if (listAndBuildWatch.stop().elapsed(TimeUnit.MILLISECONDS) >= RESPONSE_TIME_THRESHOLD_MSEC) {
-            logger.warn("Took {} ms to list&map from {} profiles (out of {} profiles in store)", listAndBuildWatch.elapsed(TimeUnit.MILLISECONDS)
-                , profilesSetSize, profilesInStoreCount);
-          }
-          //Recording last checked modified time and the most recent profile
-          basePathLastModified = currBasePathModified;
-          /*TODO: mostRecentProfile = profilesSet.first();*/
-          lastKnownFileCount = expectedFileCount;
-
-          //Transform profileSet for consumption
-          transformWatch.start();
-          iterableProfileSet = Iterables.transform(profilesSet, transformer);
-          if (transformWatch.stop().elapsed(TimeUnit.MILLISECONDS) >= RESPONSE_TIME_THRESHOLD_MSEC) {
-            logger.warn("Took {} ms to transform {} profiles", transformWatch.elapsed(TimeUnit.MILLISECONDS), profilesSetSize);
-          }
+        if (maxSetCapacity < (skip + take)) {
+          logger.debug("Updating last Max Capacity from {} to {}", maxSetCapacity , (skip + take) );
+          maxSetCapacity = skip + take;
         }
-        return iterableProfileSet.iterator();
-      } catch (IOException e) {
-        throw new RuntimeException(e);
+        //Mark Start Time
+        listAndBuildWatch.reset().start();
+
+        //Listing ALL DrillSysFiles
+        //Can apply MostRecentProfile name as filter. Unfortunately, Hadoop (2.7.1) currently doesn't leverage this to speed up
+        List<FileStatus> fileStatuses = DrillFileSystemUtil.listFiles(fs, basePath, false,
+            sysFileSuffixFilter
+            );
+        //Checking if empty
+        if (fileStatuses.isEmpty()) {
+          //WithoutFilter::
+          return Collections.emptyIterator();
+        }
+        //Force a reload of the profile.
+        //Note: We shouldn't need to do this if the load is incremental (i.e. using mostRecentProfile)
+        profilesSet.clear();
+        profilesSetSize = 0;
+        int profilesInStoreCount = 0;
+
+        if (enableArchiving) {
+          pendingArchivalSet.clear();
+          pendingArchivalSetSize = 0;
+        }
+
+        //Constructing TreeMap from List
+        for (FileStatus stat : fileStatuses) {
+          String profileName = stat.getPath().getName();
+          profilesSetSize = addToProfileSet(profileName, profilesSetSize, maxSetCapacity);
+          profilesInStoreCount++;
+        }
+
+        //Archive older profiles
+        if (enableArchiving) {
+          archiveProfiles(fs, profilesInStoreCount);
+        }
+
+        //Report Lag
+        if (listAndBuildWatch.stop().elapsed(TimeUnit.MILLISECONDS) >= RESPONSE_TIME_THRESHOLD_MSEC) {
+          logger.warn("Took {} ms to list & map {} profiles (out of {} profiles in store)", listAndBuildWatch.elapsed(TimeUnit.MILLISECONDS)
+              , profilesSetSize, profilesInStoreCount);
+        }
+        //Recording last checked modified time and the most recent profile
+        basePathLastModified = currBasePathModified;
+        /*TODO: mostRecentProfile = profilesSet.first();*/
+        lastKnownFileCount = expectedFileCount;
+
+        //Transform profileSet for consumption
+        transformWatch.start();
+        iterableProfileSet = Iterables.transform(profilesSet, transformer);
+        if (transformWatch.stop().elapsed(TimeUnit.MILLISECONDS) >= RESPONSE_TIME_THRESHOLD_MSEC) {
+          logger.warn("Took {} ms to transform {} profiles", transformWatch.elapsed(TimeUnit.MILLISECONDS), profilesSetSize);
+        }
       }
+      return iterableProfileSet.iterator();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 
