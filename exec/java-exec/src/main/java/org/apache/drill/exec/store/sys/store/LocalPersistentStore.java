@@ -112,6 +112,8 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
   @Override
   public Iterator<Map.Entry<String, V>> getRange(int skip, int take) {
     try {
+      long time = System.currentTimeMillis();
+      logger.info("lps entered by {}", Thread.currentThread().getName());
       // list only files with sys file suffix
       PathFilter sysFileSuffixFilter = new PathFilter() {
         @Override
@@ -133,6 +135,7 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
 
       Collections.sort(files);
 
+      logger.info("lps returning by {} after {}", Thread.currentThread().getName(), System.currentTimeMillis()-time);
       return Iterables.transform(Iterables.limit(Iterables.skip(files, skip), take), new Function<String, Entry<String, V>>() {
         @Nullable
         @Override
