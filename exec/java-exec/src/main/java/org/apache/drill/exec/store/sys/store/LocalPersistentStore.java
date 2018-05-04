@@ -62,11 +62,11 @@ import com.google.common.collect.Iterables;
 public class LocalPersistentStore<V> extends BasePersistentStore<V> {
   private static final Logger logger = LoggerFactory.getLogger(LocalPersistentStore.class);
 
-  //Provides a threshold above which we report the time to load
+  //Provides a threshold above which we report an event's time
   private static final long RESPONSE_TIME_THRESHOLD_MSEC = 2000L;
   private static final String ARCHIVE_LOCATION = "archived";
 
-  private static final int drillSysFileExtSize = DRILL_SYS_FILE_SUFFIX.length();
+  private static final int DRILL_SYS_FILE_EXT_SIZE = DRILL_SYS_FILE_SUFFIX.length();
   private final Path basePath;
   private final PersistentStoreConfig<V> config;
   private final DrillFileSystem fs;
@@ -318,10 +318,10 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
   private int addToProfileSet(String profileName, int currentSize, int maximumCapacity) {
     //Add if not reached max capacity
     if (currentSize < maximumCapacity) {
-      profilesSet.add(profileName.substring(0, profileName.length() - drillSysFileExtSize));
+      profilesSet.add(profileName.substring(0, profileName.length() - DRILL_SYS_FILE_EXT_SIZE));
       currentSize++;
     } else {
-      boolean addedProfile = profilesSet.add(profileName.substring(0, profileName.length() - drillSysFileExtSize));
+      boolean addedProfile = profilesSet.add(profileName.substring(0, profileName.length() - DRILL_SYS_FILE_EXT_SIZE));
       //Remove existing 'oldest' file
       if (addedProfile) {
         String oldestProfile = profilesSet.pollLast();
