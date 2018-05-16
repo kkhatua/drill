@@ -31,7 +31,6 @@ import org.apache.drill.exec.proto.UserProtos.GetServerMetaReq;
 import org.apache.drill.exec.proto.UserProtos.GetTablesReq;
 import org.apache.drill.exec.proto.UserProtos.QueryPlanFragments;
 import org.apache.drill.exec.proto.UserProtos.RunQuery;
-import org.apache.drill.exec.proto.helper.QueryIdHelper;
 import org.apache.drill.exec.rpc.Acks;
 import org.apache.drill.exec.rpc.ResponseSender;
 import org.apache.drill.exec.rpc.UserClientConnection;
