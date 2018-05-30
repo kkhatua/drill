@@ -17,6 +17,7 @@
  */
 package org.apache.drill.exec.server;
 
+import java.io.File;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -41,6 +42,7 @@ import org.apache.drill.exec.server.options.SystemOptionManager;
 import org.apache.drill.exec.server.rest.WebServer;
 import org.apache.drill.exec.service.ServiceEngine;
 import org.apache.drill.exec.store.StoragePluginRegistry;
+//import org.apache.drill.exec.store.dfs.FileSystemConfig;
 import org.apache.drill.exec.store.sys.store.provider.CachingPersistentStoreProvider;
 import org.apache.drill.exec.store.sys.store.provider.InMemoryStoreProvider;
 import org.apache.drill.exec.store.sys.PersistentStoreProvider;
@@ -161,6 +163,10 @@ public class Drillbit implements AutoCloseable {
 
     stateManager = new DrillbitStateManager(DrillbitState.STARTUP);
     logger.info("Construction completed ({} ms).", w.elapsed(TimeUnit.MILLISECONDS));
+
+    //TODO: Can I write to static Space?
+    File dummy = new File("dummy.js");
+    logger.info("Place holder: {}", dummy.getAbsolutePath());
   }
 
   public int getUserPort() {

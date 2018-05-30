@@ -218,7 +218,7 @@ public class FragmentsRunner {
     }
     final InitializeFragments initFrags = fb.build();
 
-    logger.debug("Sending remote fragments to node: {}\nData: {}", assignment, initFrags);
+    logger.info("Sending remote fragments to node: {}\nData: {}", assignment, initFrags);
     final FragmentSubmitListener listener =
         new FragmentSubmitListener(assignment, initFrags, latch, fragmentSubmitFailures);
     controller.getTunnel(assignment).sendFragments(listener, initFrags);

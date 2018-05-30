@@ -397,6 +397,9 @@ public class FragmentExecutor implements Runnable {
     logger.info(fragmentName + ": State change requested {} --> {}", current, target);
     switch (target) {
     case CANCELLATION_REQUESTED:
+      for (StackTraceElement ste : new Exception().getStackTrace()) {
+        logger.info("::request::  {}" , ste);
+      }
       switch (current) {
       case SENDING:
       case AWAITING_ALLOCATION:
@@ -477,17 +480,21 @@ public class FragmentExecutor implements Runnable {
   }
 
   private class ExecutorStateImpl implements FragmentContext.ExecutorState {
+    @Override
     public boolean shouldContinue() {
       return FragmentExecutor.this.shouldContinue();
     }
 
+    @Override
     public void fail(final Throwable t) {
       FragmentExecutor.this.fail(t);
     }
 
+    @Override
     public boolean isFailed() {
       return fragmentState.get() == FragmentState.FAILED;
     }
+    @Override
     public Throwable getFailureCause(){
       return deferredException.getException();
     }

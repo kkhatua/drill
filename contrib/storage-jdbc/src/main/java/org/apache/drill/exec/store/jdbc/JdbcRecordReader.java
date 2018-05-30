@@ -183,6 +183,10 @@ class JdbcRecordReader extends AbstractRecordReader {
   public void setup(OperatorContext operatorContext, OutputMutator output) throws ExecutionSetupException {
     try {
       connection = source.getConnection();
+      //logger.info("Xdbc schema : {} ({})", connection.getSchema(), connection.getClass().toString());
+      for (StackTraceElement ste : new Exception().getStackTrace()) {
+        logger.info("::xdbc::  {}" , ste);
+      }
       statement = connection.createStatement();
       resultSet = statement.executeQuery(sql);
 

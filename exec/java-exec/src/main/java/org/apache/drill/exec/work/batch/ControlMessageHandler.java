@@ -68,6 +68,10 @@ public class ControlMessageHandler implements RequestHandler<ControlConnection> 
       logger.debug("Received bit com message of type {}", rpcType);
     }
 
+    logger.info("rpcType {} on connection {}", rpcType, connection.getRemoteAddress());
+    for (StackTraceElement ste : new Exception().getStackTrace()) {
+      logger.info("::request::  {}" , ste);
+    }
     switch (rpcType) {
 
     case RpcType.REQ_CANCEL_FRAGMENT_VALUE: {

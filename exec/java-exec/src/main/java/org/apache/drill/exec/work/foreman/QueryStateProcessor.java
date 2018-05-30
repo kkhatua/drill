@@ -74,6 +74,7 @@ public class QueryStateProcessor implements AutoCloseable {
    */
   public synchronized void moveToState(QueryState newState, Exception exception) {
     logger.debug(queryIdString + ": State change requested {} --> {}", state, newState);
+    logger.debug(queryIdString + ": mysterious State change requested {} --> {}\n{}", state, newState, exception);
 
     switch (state) {
       case PREPARING:
@@ -341,6 +342,7 @@ public class QueryStateProcessor implements AutoCloseable {
 
   private class StateSwitch extends EventProcessor<StateEvent> {
     public void addEvent(final QueryState newState, final Exception exception) {
+      logger.info("Sending event of {} for {}", newState, exception);
       sendEvent(new StateEvent(newState, exception));
     }
 

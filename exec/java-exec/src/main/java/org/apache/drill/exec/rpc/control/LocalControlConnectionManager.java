@@ -56,6 +56,10 @@ public class LocalControlConnectionManager extends ControlConnectionManager {
       logger.debug("Received bit com message of type {} over local connection manager", rpcType);
     }
 
+    logger.info("Received bit com message of type {} over local connection manager", rpcType);
+    for (StackTraceElement ste : new Exception().getStackTrace()) {
+      logger.info("::runCmd::  {}" , ste);
+    }
     switch (rpcType) {
 
       case BitControl.RpcType.REQ_CANCEL_FRAGMENT_VALUE: {
