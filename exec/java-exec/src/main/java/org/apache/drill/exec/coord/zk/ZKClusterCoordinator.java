@@ -154,7 +154,9 @@ public class ZKClusterCoordinator extends ClusterCoordinator {
 
   private class EndpointListener implements ServiceCacheListener {
     @Override
-    public void stateChanged(CuratorFramework client, ConnectionState newState) { }
+    public void stateChanged(CuratorFramework client, ConnectionState newState) {
+      logger.debug("Got state change --> not doing anything");
+    }
 
     @Override
     public void cacheChanged() {
@@ -212,6 +214,7 @@ public class ZKClusterCoordinator extends ClusterCoordinator {
    * triggered. State information is used during planning and
    * initial client connection phases.
    */
+  @Override
   public RegistrationHandle update(RegistrationHandle handle, State state) {
     ZKRegistrationHandle h = (ZKRegistrationHandle) handle;
       try {
@@ -265,8 +268,14 @@ public class ZKClusterCoordinator extends ClusterCoordinator {
   private synchronized void updateEndpoints() {
     try {
       // All active bits in the Zookeeper
+      //TODO: Directly ping
+      Collection<ServiceInstance<DrillbitEndpoint>> endpointSet = discovery.queryForInstances(serviceName);
+      //TODO: ...  or ask a neighbour?
+
+
+      //Transform
       Collection<DrillbitEndpoint> newDrillbitSet =
-      transform(discovery.queryForInstances(serviceName),
+      transform(endpointSet ,
         new Function<ServiceInstance<DrillbitEndpoint>, DrillbitEndpoint>() {
           @Override
           public DrillbitEndpoint apply(ServiceInstance<DrillbitEndpoint> input) {

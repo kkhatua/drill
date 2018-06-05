@@ -20,6 +20,9 @@ package org.apache.drill.exec.work.foreman;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.netty.buffer.ByteBuf;
 
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,6 +37,7 @@ import org.apache.drill.exec.coord.store.TransientStore;
 import org.apache.drill.exec.proto.BitControl.FragmentStatus;
 import org.apache.drill.exec.proto.BitControl.PlanFragment;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
+import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint.State;
 import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
 import org.apache.drill.exec.proto.GeneralRPCProtos.Ack;
 import org.apache.drill.exec.proto.UserBitShared.FragmentState;
@@ -567,8 +571,8 @@ public class QueryManager implements AutoCloseable {
       final StringBuilder failedNodeList = new StringBuilder();
       boolean atLeastOneFailure = false;
 
-      for (final DrillbitEndpoint ep : unregisteredDrillbits) {
-        final NodeTracker tracker = nodeMap.get(ep);
+      for (final DrillbitEndpoint miaEP : unregisteredDrillbits) {
+        final NodeTracker tracker = nodeMap.get(miaEP);
         if (tracker == null) {
           continue; // fragments were not assigned to this Drillbit
         }
@@ -584,9 +588,17 @@ public class QueryManager implements AutoCloseable {
         } else {
           atLeastOneFailure = true;
         }
-        failedNodeList.append(ep.getAddress());
+        failedNodeList.append(miaEP.getAddress());
         failedNodeList.append(":");
-        failedNodeList.append(ep.getUserPort());
+        failedNodeList.append(miaEP.getUserPort());
+
+        //TODO: Sleep and check back if the bit is indeed offline!
+        //Ideally...
+        if (miaEP.getState().equals(DrillbitEndpoint.State.ONLINE )) {
+        //Reality is that state.ONLINE is preset. We need to actually ping and check
+          //False: Wait a bit before adding event??
+        }
+
       }
 
       if (atLeastOneFailure) {
@@ -598,5 +610,18 @@ public class QueryManager implements AutoCloseable {
       }
 
     }
+
+    //Check if endpoint is alive (Move to a task?)
+    private boolean isDrillbitAlive(DrillbitEndpoint ep) {
+      //TODO
+      int bit2bitTimeout = 3000/*msec*/;
+      try (Socket socket = new Socket()) {
+        socket.connect(new InetSocketAddress(ep.getAddress(), ep.getUserPort()), bit2bitTimeout);
+        return true;
+      } catch (Exception e) {
+        return false;
+      }
+    }
+
   };
 }
