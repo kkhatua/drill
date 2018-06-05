@@ -26,6 +26,7 @@ import java.net.SocketAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.drill.common.exceptions.DrillRuntimeException;
@@ -582,6 +583,14 @@ public class QueryManager implements AutoCloseable {
           continue; // fragments assigned to this Drillbit completed
         }
 
+        //TODO: Sleep and check back if the bit is indeed offline!
+        //Reality is that state.ONLINE is preset. We need to actually ping and check
+        //First check if drillBit is indeed offline
+        if (isDrillbitAlive(miaEP)) {
+          //False alarm. Will rely on ZK to reregister
+          continue;
+        }
+
         // fragments were running on the Drillbit, capture node name for exception or logging message
         if (atLeastOneFailure) {
           failedNodeList.append(", ");
@@ -591,14 +600,6 @@ public class QueryManager implements AutoCloseable {
         failedNodeList.append(miaEP.getAddress());
         failedNodeList.append(":");
         failedNodeList.append(miaEP.getUserPort());
-
-        //TODO: Sleep and check back if the bit is indeed offline!
-        //Ideally...
-        if (miaEP.getState().equals(DrillbitEndpoint.State.ONLINE )) {
-        //Reality is that state.ONLINE is preset. We need to actually ping and check
-          //False: Wait a bit before adding event??
-        }
-
       }
 
       if (atLeastOneFailure) {
@@ -613,12 +614,16 @@ public class QueryManager implements AutoCloseable {
 
     //Check if endpoint is alive (Move to a task?)
     private boolean isDrillbitAlive(DrillbitEndpoint ep) {
-      //TODO
-      int bit2bitTimeout = 3000/*msec*/;
+      logger.info("Checking connection for {}", ep.getAddress());
       try (Socket socket = new Socket()) {
-        socket.connect(new InetSocketAddress(ep.getAddress(), ep.getUserPort()), bit2bitTimeout);
+        socket.connect(new InetSocketAddress(ep.getAddress(), ep.getUserPort())
+            , (int) TimeUnit.SECONDS.toMillis(
+                foreman.getQueryContext().getConfig().getInt(ExecConstants.BIT_RPC_TIMEOUT)
+            ));
+        logger.info("{} is alive!", ep.getAddress());
         return true;
       } catch (Exception e) {
+        logger.info("{} is dead(?)!", ep.getAddress());
         return false;
       }
     }
