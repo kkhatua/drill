@@ -28,10 +28,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.drill.common.exceptions.DrillRuntimeException;
@@ -578,7 +580,7 @@ public class QueryManager implements AutoCloseable {
       boolean atLeastOneFailure = false;
 
       //Iterate through all missing-in-action Drillbits
-      Future<Boolean> lastTask;
+      Future<Boolean> lastTask = null;
       Set<DrillbitEndpoint> unreachableEndpointSet = new HashSet<DrillbitEndpoint>(unregisteredDrillbits);
       for (final DrillbitEndpoint miaEP : unregisteredDrillbits) {
         final NodeTracker tracker = nodeMap.get(miaEP);
@@ -600,9 +602,14 @@ public class QueryManager implements AutoCloseable {
 
       //Wait for connect calls to complete
       logger.info("Wait for connect calls to complete ");
-      lastTask.get(
-      //bitPulseSvc.awaitTermination(
-          foreman.getQueryContext().getConfig().getInt(ExecConstants.BIT_RPC_TIMEOUT), TimeUnit.SECONDS);
+      try {
+        lastTask.get(
+        //bitPulseSvc.awaitTermination(
+            foreman.getQueryContext().getConfig().getInt(ExecConstants.BIT_RPC_TIMEOUT), TimeUnit.SECONDS);
+      } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
       bitPulseSvc.shutdownNow().wait(TimeUnit.SECONDS.toMillis(3));
 
       if (!unreachableEndpointSet.isEmpty()) {
