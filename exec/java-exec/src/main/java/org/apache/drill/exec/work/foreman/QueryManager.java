@@ -22,9 +22,14 @@ import io.netty.buffer.ByteBuf;
 
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -141,7 +146,7 @@ public class QueryManager implements AutoCloseable {
     if (inTerminalState || (oldState == FragmentState.CANCELLATION_REQUESTED && !isTerminal(currentState))) {
       // Already in a terminal state, or invalid state transition from CANCELLATION_REQUESTED. This shouldn't happen.
       logger.warn(String.format("Received status message for fragment %s after fragment was in state %s. New state was %s",
-        QueryIdHelper.getQueryIdentifier(fragmentHandle), oldState, currentState));
+          QueryIdHelper.getQueryIdentifier(fragmentHandle), oldState, currentState));
       return false;
     }
 
@@ -237,7 +242,7 @@ public class QueryManager implements AutoCloseable {
       final DrillbitEndpoint endpoint = data.getEndpoint();
       final FragmentHandle handle = data.getHandle();
       controller.getTunnel(endpoint).unpauseFragment(new SignalListener(endpoint, handle,
-        SignalListener.Signal.UNPAUSE), handle);
+          SignalListener.Signal.UNPAUSE), handle);
     }
   }
 
@@ -245,10 +250,10 @@ public class QueryManager implements AutoCloseable {
   public void close() throws Exception { }
 
   /*
-     * This assumes that the FragmentStatusListener implementation takes action when it hears
-     * that the target fragment has acknowledged the signal. As a result, this listener doesn't do anything
-     * but log messages.
-     */
+   * This assumes that the FragmentStatusListener implementation takes action when it hears
+   * that the target fragment has acknowledged the signal. As a result, this listener doesn't do anything
+   * but log messages.
+   */
   private static class SignalListener extends EndpointListener<Ack, FragmentHandle> {
     /**
      * An enum of possible signals that {@link SignalListener} listens to.
@@ -271,7 +276,7 @@ public class QueryManager implements AutoCloseable {
     public void success(final Ack ack, final ByteBuf buf) {
       if (!ack.getOk()) {
         logger.warn("Remote node {} responded negative on {} request for fragment {} with {}.", endpoint, signal, value,
-          ack);
+            ack);
       }
     }
 
@@ -290,28 +295,28 @@ public class QueryManager implements AutoCloseable {
     }
 
     switch (queryState) {
-      case PREPARING:
-      case PLANNING:
-      case ENQUEUED:
-      case STARTING:
-      case RUNNING:
-      case CANCELLATION_REQUESTED:
-        runningProfileStore.put(stringQueryId, getQueryInfo());  // store as ephemeral query profile.
-        inTransientStore = true;
-        break;
-      case COMPLETED:
-      case CANCELED:
-      case FAILED:
-        try {
-          runningProfileStore.remove(stringQueryId);
-          inTransientStore = false;
-        } catch (final Exception e) {
-          logger.warn("Failure while trying to delete the stored profile for the query [{}]", stringQueryId, e);
-        }
-        break;
+    case PREPARING:
+    case PLANNING:
+    case ENQUEUED:
+    case STARTING:
+    case RUNNING:
+    case CANCELLATION_REQUESTED:
+      runningProfileStore.put(stringQueryId, getQueryInfo());  // store as ephemeral query profile.
+      inTransientStore = true;
+      break;
+    case COMPLETED:
+    case CANCELED:
+    case FAILED:
+      try {
+        runningProfileStore.remove(stringQueryId);
+        inTransientStore = false;
+      } catch (final Exception e) {
+        logger.warn("Failure while trying to delete the stored profile for the query [{}]", stringQueryId, e);
+      }
+      break;
 
-      default:
-        throw new IllegalStateException("unrecognized queryState " + queryState);
+    default:
+      throw new IllegalStateException("unrecognized queryState " + queryState);
     }
   }
 
@@ -554,15 +559,16 @@ public class QueryManager implements AutoCloseable {
     }
   };
 
-
   public DrillbitStatusListener getDrillbitStatusListener() {
     return drillbitStatusListener;
   }
 
   private final DrillbitStatusListener drillbitStatusListener = new DrillbitStatusListener() {
+    ExecutorService bitPulseSvc = Executors.newCachedThreadPool();
 
     @Override
     public void drillbitRegistered(final Set<DrillbitEndpoint> registeredDrillbits) {
+      /* Do Nothing, since work is already assumed to have been assigned */
     }
 
     @Override
@@ -570,61 +576,70 @@ public class QueryManager implements AutoCloseable {
       final StringBuilder failedNodeList = new StringBuilder();
       boolean atLeastOneFailure = false;
 
+      //Iterate through all missing-in-action Drillbits
+      Set<DrillbitEndpoint> unreachableEndpointSet = new HashSet<DrillbitEndpoint>(unregisteredDrillbits);
       for (final DrillbitEndpoint miaEP : unregisteredDrillbits) {
         final NodeTracker tracker = nodeMap.get(miaEP);
         if (tracker == null) {
+          unreachableEndpointSet.remove(miaEP);
           continue; // fragments were not assigned to this Drillbit
         }
 
         // mark node as dead.
         if (!tracker.nodeDead()) {
+          unreachableEndpointSet.remove(miaEP);
           continue; // fragments assigned to this Drillbit completed
         }
 
         //TODO: Sleep and check back if the bit is indeed offline!
         //Reality is that state.ONLINE is preset. We need to actually ping and check
-        //First check if drillBit is indeed offline
-        if (isDrillbitAlive(miaEP)) {
-          //False alarm. Will rely on ZK to reregister
-          continue;
-        }
-
-        // fragments were running on the Drillbit, capture node name for exception or logging message
-        if (atLeastOneFailure) {
-          failedNodeList.append(", ");
-        } else {
-          atLeastOneFailure = true;
-        }
-        failedNodeList.append(miaEP.getAddress());
-        failedNodeList.append(":");
-        failedNodeList.append(miaEP.getUserPort());
+        bitPulseSvc.submit(new DrillbitPulse(miaEP, unreachableEndpointSet));
       }
 
-      if (atLeastOneFailure) {
+      //Wait for connect calls to complete
+      bitPulseSvc.awaitTermination(foreman.getQueryContext().getConfig().getInt(ExecConstants.BIT_RPC_TIMEOUT), TimeUnit.SECONDS);
+      bitPulseSvc.shutdownNow();
+
+      if (!unreachableEndpointSet.isEmpty()) {
+        // fragments were running on the Drillbit, capture node name for exception or logging message
+        for (final DrillbitEndpoint unreachableEP : unreachableEndpointSet) {
+          if (failedNodeList.length() > 0) {
+            failedNodeList.append(", ");
+          }
+          failedNodeList.append(unreachableEP.getAddress()).append(":").append(unreachableEP.getUserPort());
+        }
         logger.warn("Drillbits [{}] no longer registered in cluster.  Canceling query {}",
             failedNodeList, QueryIdHelper.getQueryId(queryId));
         foreman.addToEventQueue(QueryState.FAILED,
             new ForemanException(String.format("One more more nodes lost connectivity during query.  Identified nodes were [%s].",
                 failedNodeList)));
       }
+    }
+  };
 
+  class DrillbitPulse implements Callable<Boolean> {
+    private DrillbitEndpoint drillbitEP;
+    private Set<DrillbitEndpoint> endpointSet;
+    public DrillbitPulse(DrillbitEndpoint bitEP, Set<DrillbitEndpoint> endpointSet) {
+      this.drillbitEP = bitEP;
+      this.endpointSet = endpointSet;
     }
 
-    //Check if endpoint is alive (Move to a task?)
-    private boolean isDrillbitAlive(DrillbitEndpoint ep) {
-      logger.info("Checking connection for {}", ep.getAddress());
+    @Override
+    public Boolean call() throws Exception {
+      logger.info("Checking connection for {}", drillbitEP.getAddress());
       try (Socket socket = new Socket()) {
-        socket.connect(new InetSocketAddress(ep.getAddress(), ep.getUserPort())
+        socket.connect(new InetSocketAddress(drillbitEP.getAddress(), drillbitEP.getUserPort())
             , (int) TimeUnit.SECONDS.toMillis(
                 foreman.getQueryContext().getConfig().getInt(ExecConstants.BIT_RPC_TIMEOUT)
-            ));
-        logger.info("{} is alive!", ep.getAddress());
-        return true;
+                ));
+        logger.info("{} is alive!", drillbitEP.getAddress());
+        return endpointSet.remove(drillbitEP);
       } catch (Exception e) {
-        logger.info("{} is dead(?)!", ep.getAddress());
+        logger.info("{} is dead(?)!", drillbitEP.getAddress());
         return false;
       }
     }
-
-  };
+  }
 }
+
