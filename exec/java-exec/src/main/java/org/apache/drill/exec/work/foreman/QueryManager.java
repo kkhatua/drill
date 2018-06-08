@@ -610,15 +610,17 @@ public class QueryManager implements AutoCloseable {
         // TODO Auto-generated catch block
         e.printStackTrace();
       }
-      bitPulseSvc.shutdownNow().wait(TimeUnit.SECONDS.toMillis(3));
+      bitPulseSvc.shutdownNow(); //.wait(TimeUnit.SECONDS.toMillis(3));
 
       if (!unreachableEndpointSet.isEmpty()) {
         // fragments were running on the Drillbit, capture node name for exception or logging message
         for (final DrillbitEndpoint unreachableEP : unreachableEndpointSet) {
-          if (failedNodeList.length() > 0) {
-            failedNodeList.append(", ");
-          }
-          failedNodeList.append(unreachableEP.getAddress()).append(":").append(unreachableEP.getUserPort());
+//          if (failedNodeList.length() > 0) {
+//            failedNodeList.append(", ");
+//          }
+          failedNodeList
+            .append(failedNodeList.length() > 0 ? "," : "")
+            .append(unreachableEP.getAddress()).append(":").append(unreachableEP.getUserPort());
         }
         logger.warn("Drillbits [{}] no longer registered in cluster.  Canceling query {}",
             failedNodeList, QueryIdHelper.getQueryId(queryId));
