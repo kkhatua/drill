@@ -30,6 +30,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -577,6 +578,7 @@ public class QueryManager implements AutoCloseable {
       boolean atLeastOneFailure = false;
 
       //Iterate through all missing-in-action Drillbits
+      Future<Boolean> lastTask;
       Set<DrillbitEndpoint> unreachableEndpointSet = new HashSet<DrillbitEndpoint>(unregisteredDrillbits);
       for (final DrillbitEndpoint miaEP : unregisteredDrillbits) {
         final NodeTracker tracker = nodeMap.get(miaEP);
@@ -593,12 +595,15 @@ public class QueryManager implements AutoCloseable {
 
         //TODO: Sleep and check back if the bit is indeed offline!
         //Reality is that state.ONLINE is preset. We need to actually ping and check
-        bitPulseSvc.submit(new DrillbitPulse(miaEP, unreachableEndpointSet));
+        lastTask = bitPulseSvc.submit(new DrillbitPulse(miaEP, unreachableEndpointSet));
       }
 
       //Wait for connect calls to complete
-      bitPulseSvc.awaitTermination(foreman.getQueryContext().getConfig().getInt(ExecConstants.BIT_RPC_TIMEOUT), TimeUnit.SECONDS);
-      bitPulseSvc.shutdownNow();
+      logger.info("Wait for connect calls to complete ");
+      lastTask.get(
+      //bitPulseSvc.awaitTermination(
+          foreman.getQueryContext().getConfig().getInt(ExecConstants.BIT_RPC_TIMEOUT), TimeUnit.SECONDS);
+      bitPulseSvc.shutdownNow().wait(TimeUnit.SECONDS.toMillis(3));
 
       if (!unreachableEndpointSet.isEmpty()) {
         // fragments were running on the Drillbit, capture node name for exception or logging message
@@ -623,6 +628,7 @@ public class QueryManager implements AutoCloseable {
     public DrillbitPulse(DrillbitEndpoint bitEP, Set<DrillbitEndpoint> endpointSet) {
       this.drillbitEP = bitEP;
       this.endpointSet = endpointSet;
+      logger.info("Submitted for checking connection of {}", drillbitEP.getAddress());
     }
 
     @Override
