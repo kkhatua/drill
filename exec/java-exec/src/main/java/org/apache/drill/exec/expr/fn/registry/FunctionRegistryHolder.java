@@ -325,6 +325,7 @@ public class FunctionRegistryHolder {
       Map<String, DrillFuncHolder> signatures = functions.get(functionName);
       if (signatures == null) {
         signatures = Maps.newConcurrentMap();
+        logger.info("Added function {})", functionName);
         functions.put(functionName, signatures);
       }
       signatures.put(functionSignature, function.getHolder());
