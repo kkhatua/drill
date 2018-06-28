@@ -112,7 +112,7 @@ public class FunctionInfoIterator implements Iterator<Object> {
       this.name = funcName;
       this.signature = funcSignature;
       this.paramCount = funcHolder.getParamCount();
-      this.returnType = funcHolder.getReturnType().toString();
+      this.returnType = funcHolder.getReturnType().getMinorType().toString();
       this.arguments = funcHolder.getInputParameters();
     }
   }
