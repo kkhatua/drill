@@ -79,6 +79,11 @@ public class FunctionImplementationRegistry implements FunctionLookupContext, Au
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(FunctionImplementationRegistry.class);
 
   private final LocalFunctionRegistry localFunctionRegistry;
+  //TODO
+  public LocalFunctionRegistry getLocalFunctionRegistry() {
+    return localFunctionRegistry;
+  }
+
   private final RemoteFunctionRegistry remoteFunctionRegistry;
   private final Path localUdfDir;
   private boolean deleteTmpDir = false;

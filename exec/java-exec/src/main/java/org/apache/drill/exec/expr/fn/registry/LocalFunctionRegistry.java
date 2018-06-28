@@ -73,6 +73,10 @@ public class LocalFunctionRegistry {
 
   private final FunctionRegistryHolder registryHolder;
 
+  public FunctionRegistryHolder getRegistryHolder() {
+    return registryHolder;
+  }
+
   /**
    * Registers all functions present in Drill classpath on start-up. All functions will be marked as built-in.
    * Built-in functions are not allowed to be unregistered. Initially sync registry version will be set to 0.
@@ -226,6 +230,13 @@ public class LocalFunctionRegistry {
    */
   public List<DrillFuncHolder> getMethods(String name) {
     return registryHolder.getHoldersByFunctionName(name.toLowerCase());
+  }
+
+  /**
+   * @return all function holders
+   */
+  public List<DrillFuncHolder> getMethods() {
+    return Lists.newArrayList(registryHolder.getAllFunctionsWithHolders().values());
   }
 
   /**

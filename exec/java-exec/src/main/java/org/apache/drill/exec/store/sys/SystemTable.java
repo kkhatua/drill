@@ -28,6 +28,7 @@ import org.apache.drill.exec.store.sys.OptionIterator.OptionValueWrapper;
  *   OPTION, DRILLBITS and VERSION are local tables available on every Drillbit.
  *   MEMORY and THREADS are distributed tables with one record on every Drillbit.
  *   PROFILES and PROFILES_JSON are stored in local / distributed storage.
+ *   FUNCTIONS and FUNCTIONS_ALL are tables of local and distributed functions
  * </p>
  */
 public enum SystemTable {
@@ -112,6 +113,13 @@ public enum SystemTable {
     @Override
   public Iterator<Object> getIterator(final ExecutorFragmentContext context, final int maxRecords) {
       return new ThreadsIterator(context);
+    }
+  },
+
+  FUNCTIONS("functions", false, FunctionInfoIterator.FunctionsInfo.class) {
+    @Override
+  public Iterator<Object> getIterator(final ExecutorFragmentContext context, final int maxRecords) {
+      return new FunctionInfoIterator(context);
     }
   };
 
