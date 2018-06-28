@@ -27,7 +27,7 @@ import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
 import org.apache.drill.exec.expr.fn.registry.FunctionRegistryHolder;
 import org.apache.drill.exec.ops.ExecutorFragmentContext;
 
-//import com.google.common.collect.ListMultimap;
+import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Lists;
 
 /**
@@ -59,7 +59,7 @@ public class FunctionInfoIterator implements Iterator<Object> {
       List<FunctionsInfo> functionsList = Lists.newArrayList();
 
       //Approach #1
-      /*
+      //*
       ListMultimap<String, DrillFuncHolder> functionMap = functionRegistryHolder.getAllFunctionsWithHolders();
       for (String functionName : functionMap.keySet()) {
         for (DrillFuncHolder functionHolder : functionMap.get(functionName)) {
@@ -67,7 +67,7 @@ public class FunctionInfoIterator implements Iterator<Object> {
           functionsList.add(new FunctionsInfo(functionName, null, functionHolder));
         }
       }
-      */
+      //*/
 
       //Appoach #2
       List<String> jarNames = functionRegistryHolder.getAllJarNames();
@@ -76,7 +76,8 @@ public class FunctionInfoIterator implements Iterator<Object> {
         for (String functionName : functionNames) {
           for (DrillFuncHolder functionHolder : functionRegistryHolder.getHoldersByFunctionName(functionName)) {
             //functionHolder.sig
-            functionsList.add(new FunctionsInfo(functionName, null, functionHolder));
+            //functionsList.add(
+            new FunctionsInfo(functionName, null, functionHolder)/*)*/;
           }
         }
 
@@ -113,7 +114,7 @@ public class FunctionInfoIterator implements Iterator<Object> {
       this.name = funcName;
       this.signature = funcSignature;
       this.paramCount = funcHolder.getParamCount();
-      this.registeredNames = funcHolder.getRegisteredNames().toString();
+      this.registeredNames = String.join(",", funcHolder.getRegisteredNames());
       this.returnType = funcHolder.getReturnType().getMinorType().toString();
       this.arguments = funcHolder.getInputParameters();
     }
