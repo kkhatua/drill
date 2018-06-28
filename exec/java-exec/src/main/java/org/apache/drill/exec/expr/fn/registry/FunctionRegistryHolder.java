@@ -129,6 +129,7 @@ public class FunctionRegistryHolder {
         removeAllByJar(jarName);
         Map<String, Queue<String>> jar = Maps.newConcurrentMap();
         jars.put(jarName, jar);
+        logger.info("Adding jar: {}", jarName);
         addFunctions(jar, newJar.getValue());
       }
       this.version = version;

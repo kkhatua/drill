@@ -70,18 +70,18 @@ public class FunctionInfoIterator implements Iterator<Object> {
       //*/
 
       //Appoach #2
+      /*
       List<String> jarNames = functionRegistryHolder.getAllJarNames();
       for (String jarName : jarNames) {
         List<String> functionNames = functionRegistryHolder.getFunctionNamesByJar(jarName);
         for (String functionName : functionNames) {
           for (DrillFuncHolder functionHolder : functionRegistryHolder.getHoldersByFunctionName(functionName)) {
             //functionHolder.sig
-            //functionsList.add(
-            new FunctionsInfo(functionName, null, functionHolder)/*)*/;
+            //functionsList.add(new FunctionsInfo(functionName, null, functionHolder));
           }
         }
-
       }
+      */
 
       functionsList.sort(new Comparator<FunctionsInfo>() {
         @Override
@@ -103,20 +103,28 @@ public class FunctionInfoIterator implements Iterator<Object> {
   public static class FunctionsInfo {
 
     public final String name;
-    public final String signature;
+    //public final String signature;
     public final int paramCount;
-    public final String registeredNames;
+    //public final String registeredNames;
     public final String arguments;
     public final String returnType;
-    //TODO: public final String description;
+    //TODO:
+    public final boolean isUdf;
+    public final String description;
 
     public FunctionsInfo(String funcName, String funcSignature, DrillFuncHolder funcHolder) {
+      this(funcName, funcSignature, funcHolder, false);
+    }
+
+    public FunctionsInfo(String funcName, String funcSignature, DrillFuncHolder funcHolder, boolean isUdf) {
       this.name = funcName;
-      this.signature = funcSignature;
+      //this.signature = funcSignature;
       this.paramCount = funcHolder.getParamCount();
-      this.registeredNames = String.join(",", funcHolder.getRegisteredNames());
+      //this.registeredNames = String.join(",", funcHolder.getRegisteredNames());
       this.returnType = funcHolder.getReturnType().getMinorType().toString();
       this.arguments = funcHolder.getInputParameters();
+      this.isUdf = isUdf;
+      this.description = null;
     }
   }
 }
