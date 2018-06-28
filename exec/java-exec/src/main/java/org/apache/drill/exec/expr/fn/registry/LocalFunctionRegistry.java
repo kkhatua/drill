@@ -167,6 +167,7 @@ public class LocalFunctionRegistry {
       FunctionConverter converter = new FunctionConverter();
       List<AnnotatedClassDescriptor> providerClasses = jarScan.getScanResult().getAnnotatedClasses();
       List<FunctionHolder> functions = Lists.newArrayList();
+      logger.info("Adding locally {} with {} functions", jarScan.getJarName(), functions.size());
       newJars.put(jarScan.getJarName(), functions);
       for (AnnotatedClassDescriptor func : providerClasses) {
         DrillFuncHolder holder = converter.getHolder(func, jarScan.getClassLoader());

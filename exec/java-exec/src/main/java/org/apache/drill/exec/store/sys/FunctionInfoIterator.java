@@ -25,6 +25,7 @@ import java.util.List;
 import org.apache.drill.exec.expr.fn.DrillFuncHolder;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
 import org.apache.drill.exec.expr.fn.registry.FunctionRegistryHolder;
+import org.apache.drill.exec.expr.fn.registry.LocalFunctionRegistry;
 import org.apache.drill.exec.ops.ExecutorFragmentContext;
 
 import com.google.common.collect.ListMultimap;
@@ -109,21 +110,21 @@ public class FunctionInfoIterator implements Iterator<Object> {
     public final String arguments;
     public final String returnType;
     //TODO:
-    public final boolean isUdf;
+    public final String jarName;
     public final String description;
 
     public FunctionsInfo(String funcName, String funcSignature, DrillFuncHolder funcHolder) {
-      this(funcName, funcSignature, funcHolder, false);
+      this(funcName, funcSignature, funcHolder, LocalFunctionRegistry.BUILT_IN);
     }
 
-    public FunctionsInfo(String funcName, String funcSignature, DrillFuncHolder funcHolder, boolean isUdf) {
+    public FunctionsInfo(String funcName, String funcSignature, DrillFuncHolder funcHolder, String jarName) {
       this.name = funcName;
       //this.signature = funcSignature;
       this.paramCount = funcHolder.getParamCount();
       //this.registeredNames = String.join(",", funcHolder.getRegisteredNames());
       this.returnType = funcHolder.getReturnType().getMinorType().toString();
       this.arguments = funcHolder.getInputParameters();
-      this.isUdf = isUdf;
+      this.jarName = jarName;
       this.description = null;
     }
   }
