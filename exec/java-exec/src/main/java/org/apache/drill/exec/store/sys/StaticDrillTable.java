@@ -42,6 +42,8 @@ public class StaticDrillTable extends DrillTable {
   @Override
   public RelDataType getRowType(RelDataTypeFactory typeFactory) {
     //Declaring all System Table datatypes as nullable, since tables are anyway immutable (DRILL-6588)
-    return typeFactory.createTypeWithNullability(dataType.getRowType(typeFactory), true);
+//    return typeFactory.createTypeWithNullability(dataType.getRowType(typeFactory), true);
+    //Reverting to old style
+    return dataType.getRowType(typeFactory);
   }
 }

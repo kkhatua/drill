@@ -22,6 +22,7 @@ import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.sql.type.SqlTypeName;
 
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -40,6 +41,11 @@ public abstract class RecordDataType {
   public abstract List<String> getFieldNames();
 
   /**
+   * @return the nullable nature of columns in the table
+   */
+  public abstract List<Boolean> getFieldNullability();
+
+  /**
    * This method constructs a {@link org.apache.calcite.rel.type.RelDataType} based on the
    * {@link org.apache.drill.exec.store.RecordDataType}'s field sql types and field names.
    *
@@ -49,15 +55,25 @@ public abstract class RecordDataType {
   public final RelDataType getRowType(RelDataTypeFactory factory) {
     final List<SqlTypeName> types = getFieldSqlTypeNames();
     final List<String> names = getFieldNames();
+    final List<Boolean> nullables = getFieldNullability();
     final List<RelDataType> fields = Lists.newArrayList();
-    for (final SqlTypeName typeName : types) {
+//    int currentIndex = 0;
+    Iterator<SqlTypeName> typesIter = types.listIterator();
+    Iterator<Boolean> nullabilityIter = nullables.listIterator();
+
+    while (typesIter.hasNext() && nullabilityIter.hasNext()) {
+      final SqlTypeName typeName = typesIter.next();
+      final boolean typeNullability = nullabilityIter.next();
+      RelDataType tmpRDT;
       switch (typeName) {
         case VARCHAR:
-          fields.add(factory.createSqlType(typeName, Integer.MAX_VALUE));
+          tmpRDT = factory.createSqlType(typeName, Integer.MAX_VALUE);
           break;
         default:
-          fields.add(factory.createSqlType(typeName));
+          tmpRDT = factory.createSqlType(typeName);
       }
+      //Add [Non]Nullable RelDataType
+      fields.add(factory.createTypeWithNullability(tmpRDT, typeNullability));
     }
     return factory.createStructType(fields, names);
   }

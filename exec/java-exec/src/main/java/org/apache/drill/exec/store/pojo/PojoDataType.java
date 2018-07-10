@@ -22,10 +22,13 @@ import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.List;
+//import java.util.Set;
 
 import org.apache.calcite.sql.type.SqlTypeName;
 
 import com.google.common.collect.Lists;
+//import com.google.common.collect.Sets;
+
 import org.apache.drill.exec.store.RecordDataType;
 
 /**
@@ -34,19 +37,27 @@ import org.apache.drill.exec.store.RecordDataType;
 public class PojoDataType extends RecordDataType {
 //  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(PojoDataType.class);
 
+//  private static final String NOT_NULLABLE_FIELDS_LABEL = "NOT_NULLABLE_FIELDS";
   private final List<SqlTypeName> types = Lists.newArrayList();
   private final List<String> names = Lists.newArrayList();
+  private final List<Boolean> nullables = Lists.newArrayList();
+//  private Set<String> notNullSet = Sets.newHashSet();
   private final Class<?> pojoClass;
 
   public PojoDataType(Class<?> pojoClass) {
     this.pojoClass = pojoClass;
     for (Field f : pojoClass.getDeclaredFields()) {
       if (Modifier.isStatic(f.getModifiers())) {
+//        checkAndLoadNonNullable(f);
         continue;
       }
 
       Class<?> type = f.getType();
       names.add(f.getName());
+
+      //Look up NotNullable set for nullable property
+      //nullables.add(!notNullSet.contains(f.getName()));
+      nullables.add(f.getDeclaredAnnotation(Nullability.class).isNullable());
 
       if (type == int.class || type == Integer.class) {
         types.add(SqlTypeName.INTEGER);
@@ -70,6 +81,22 @@ public class PojoDataType extends RecordDataType {
     }
   }
 
+  /*
+  //Reads list of any possible non-nullable fields
+  private void checkAndLoadNonNullable(Field staticField) {
+    if (staticField.getName().equals(NOT_NULLABLE_FIELDS_LABEL)) {
+      Class<?> type = staticField.getType();
+      if (type == Set.class) {
+        //TODO:      this.notNullSet = null; //staticField.get(obj)
+         //Apply to existing list of fields in this.names
+         for (String fieldName : names) {
+           nullables.add(!names.contains(fieldName)); //contains => not nullable
+        }
+      }
+    }
+  }
+  */
+
   public Class<?> getPojoClass() {
     return pojoClass;
   }
@@ -84,4 +111,8 @@ public class PojoDataType extends RecordDataType {
     return names;
   }
 
+  @Override
+  public List<Boolean> getFieldNullability() {
+    return nullables;
+  }
 }
