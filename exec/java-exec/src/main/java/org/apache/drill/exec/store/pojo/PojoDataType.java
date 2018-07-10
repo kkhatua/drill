@@ -57,8 +57,9 @@ public class PojoDataType extends RecordDataType {
 
       //Look up NotNullable set for nullable property
       //nullables.add(!notNullSet.contains(f.getName()));
-      nullables.add(f.getDeclaredAnnotation(Nullability.class).isNullable());
-
+      Nullability nullability = f.getDeclaredAnnotation(Nullability.class);
+      nullables.add(nullability == null ?
+          true : f.getDeclaredAnnotation(Nullability.class).isNullable());
       if (type == int.class || type == Integer.class) {
         types.add(SqlTypeName.INTEGER);
       } else if(type == boolean.class || type == Boolean.class) {
