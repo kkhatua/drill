@@ -57,14 +57,14 @@ public abstract class RecordDataType {
     final List<String> names = getFieldNames();
     final List<Boolean> nullables = getFieldNullability();
     final List<RelDataType> fields = Lists.newArrayList();
-//    int currentIndex = 0;
     Iterator<SqlTypeName> typesIter = types.listIterator();
     Iterator<Boolean> nullabilityIter = nullables.listIterator();
 
+    //Iterate simultaneously for nullable datatypes
     while (typesIter.hasNext() && nullabilityIter.hasNext()) {
       final SqlTypeName typeName = typesIter.next();
       final boolean typeNullability = nullabilityIter.next();
-      RelDataType tmpRDT;
+      final RelDataType tmpRDT;
       switch (typeName) {
         case VARCHAR:
           tmpRDT = factory.createSqlType(typeName, Integer.MAX_VALUE);
