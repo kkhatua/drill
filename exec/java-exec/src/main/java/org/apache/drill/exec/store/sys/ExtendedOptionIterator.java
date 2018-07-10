@@ -31,6 +31,7 @@ import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.server.options.OptionValue;
 import org.apache.drill.exec.server.options.OptionValue.Kind;
 import org.apache.drill.exec.server.options.OptionValue.OptionScope;
+import org.apache.drill.exec.store.pojo.Nullability;
 
 /*
  * Extends the original Option iterator. The idea is to hide the implementation details and present the
@@ -134,10 +135,14 @@ public class ExtendedOptionIterator implements Iterator<Object> {
    */
   public static class ExtendedOptionValueWrapper {
 
+    @Nullability(isNullable = false)
     public final String name;
+    @Nullability(isNullable = false)
     public final String kind;
+    @Nullability(isNullable = false)
     public final OptionValue.AccessibleScopes accessibleScopes;
     public final String val;
+    @Nullability(isNullable = false)
     public final OptionScope optionScope;
 
 

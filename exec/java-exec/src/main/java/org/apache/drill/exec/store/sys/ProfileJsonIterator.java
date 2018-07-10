@@ -27,6 +27,7 @@ import org.apache.drill.exec.ops.ExecutorFragmentContext;
 import org.apache.drill.exec.proto.UserBitShared;
 import org.apache.drill.exec.proto.UserBitShared.QueryProfile;
 import org.apache.drill.exec.serialization.InstanceSerializer;
+import org.apache.drill.exec.store.pojo.Nullability;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
@@ -114,6 +115,7 @@ public class ProfileJsonIterator extends ProfileIterator {
 
     private static final ProfileJson DEFAULT = new ProfileJson();
 
+    @Nullability(isNullable = false)
     public final String queryId;
     public final String json;
 

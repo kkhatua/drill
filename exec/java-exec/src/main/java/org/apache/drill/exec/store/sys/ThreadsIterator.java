@@ -23,6 +23,7 @@ import java.util.Iterator;
 
 import org.apache.drill.exec.ops.ExecutorFragmentContext;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
+import org.apache.drill.exec.store.pojo.Nullability;
 
 public class ThreadsIterator implements Iterator<Object> {
 
@@ -62,6 +63,7 @@ public class ThreadsIterator implements Iterator<Object> {
   }
 
   public static class ThreadsInfo {
+    @Nullability(isNullable = false)
     public String hostname;
     public long user_port;
     public long total_threads;

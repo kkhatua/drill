@@ -32,6 +32,7 @@ import org.apache.drill.exec.rpc.user.UserServer.BitToUserConnectionConfig;
 import org.apache.drill.exec.rpc.user.UserSession;
 import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.server.rest.profile.SimpleDurationFormat;
+import org.apache.drill.exec.store.pojo.Nullability;
 import org.apache.drill.exec.util.ImpersonationUtil;
 import org.joda.time.DateTime;
 
@@ -99,14 +100,18 @@ public class BitToUserConnectionIterator implements Iterator<Object> {
 
   public static class ConnectionInfo {
     public String user;
+    @Nullability(isNullable = false)
     public String client;
+    @Nullability(isNullable = false)
     public String drillbit;
+    @Nullability(isNullable = false)
     public Timestamp established;
     public String duration;
     public int queries;
     public boolean isAuthenticated;
     public boolean isEncrypted;
     public boolean usingSSL;
+    @Nullability(isNullable = false)
     public String session;
 
     public ConnectionInfo(Entry<BitToUserConnection, BitToUserConnectionConfig> connectionConfigPair, String hostname) {
