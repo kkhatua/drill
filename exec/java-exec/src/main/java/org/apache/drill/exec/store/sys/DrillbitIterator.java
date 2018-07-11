@@ -19,9 +19,10 @@ package org.apache.drill.exec.store.sys;
 
 import java.util.Iterator;
 
+import javax.annotation.Nonnull;
+
 import org.apache.drill.exec.ops.ExecutorFragmentContext;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
-import org.apache.drill.exec.store.pojo.Nullability;
 
 public class DrillbitIterator implements Iterator<Object> {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillbitIterator.class);
@@ -35,17 +36,17 @@ public class DrillbitIterator implements Iterator<Object> {
   }
 
   public static class DrillbitInstance {
-    @Nullability(isNullable = false)
+    @Nonnull
     public String hostname;
     public int user_port;
     public int control_port;
     public int data_port;
     public int http_port;
-    @Nullability(isNullable = false)
+    @Nonnull
     public boolean current;
-    @Nullability(isNullable = false)
+    @Nonnull
     public String version;
-    @Nullability(isNullable = false)
+    @Nonnull
     public String state;
   }
 

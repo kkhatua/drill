@@ -24,10 +24,11 @@ import java.lang.management.MemoryUsage;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.annotation.Nonnull;
+
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.exec.ops.ExecutorFragmentContext;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
-import org.apache.drill.exec.store.pojo.Nullability;
 
 public class MemoryIterator implements Iterator<Object> {
 
@@ -84,7 +85,7 @@ public class MemoryIterator implements Iterator<Object> {
   }
 
   public static class MemoryInfo {
-    @Nullability(isNullable = false)
+    @Nonnull
     public String hostname;
     public long user_port;
     public long heap_current;

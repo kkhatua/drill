@@ -23,7 +23,10 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.List;
 
+import javax.annotation.Nonnull;
+
 import org.apache.calcite.sql.type.SqlTypeName;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import com.google.common.collect.Lists;
 import org.apache.drill.exec.store.RecordDataType;
@@ -34,9 +37,8 @@ import org.apache.drill.exec.store.RecordDataType;
 public class PojoDataType extends RecordDataType {
 //  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(PojoDataType.class);
 
-  private final List<SqlTypeName> types = Lists.newArrayList();
+  private final List<ImmutablePair<SqlTypeName, Boolean>> types = Lists.newArrayList();
   private final List<String> names = Lists.newArrayList();
-  private final List<Boolean> nullables = Lists.newArrayList();
   private final Class<?> pojoClass;
 
   public PojoDataType(Class<?> pojoClass) {
@@ -49,27 +51,25 @@ public class PojoDataType extends RecordDataType {
       Class<?> type = f.getType();
       names.add(f.getName());
 
-      //Look up @Nullability for nullable property
-      Nullability nullability = f.getDeclaredAnnotation(Nullability.class);
-      nullables.add(nullability == null ? //Absence of annotation => (isNullable=true)
-          true : f.getDeclaredAnnotation(Nullability.class).isNullable());
+      //Absence of annotation @Nonnull => (isNullable=true)
+      final boolean isNullable = f.isAnnotationPresent(Nonnull.class) ? false : true;
 
       if (type == int.class || type == Integer.class) {
-        types.add(SqlTypeName.INTEGER);
+        types.add(new ImmutablePair<SqlTypeName, Boolean>(SqlTypeName.INTEGER, isNullable));
       } else if(type == boolean.class || type == Boolean.class) {
-        types.add(SqlTypeName.BOOLEAN);
+        types.add(new ImmutablePair<SqlTypeName, Boolean>(SqlTypeName.BOOLEAN, isNullable));
       } else if(type == long.class || type == Long.class) {
-        types.add(SqlTypeName.BIGINT);
+        types.add(new ImmutablePair<SqlTypeName, Boolean>(SqlTypeName.BIGINT, isNullable));
       } else if(type == double.class || type == Double.class) {
-        types.add(SqlTypeName.DOUBLE);
+        types.add(new ImmutablePair<SqlTypeName, Boolean>(SqlTypeName.DOUBLE, isNullable));
       } else if(type == BigDecimal.class) {
-        types.add(SqlTypeName.DECIMAL);
+        types.add(new ImmutablePair<SqlTypeName, Boolean>(SqlTypeName.DECIMAL, isNullable));
       } else if(type == String.class) {
-        types.add(SqlTypeName.VARCHAR);
+        types.add(new ImmutablePair<SqlTypeName, Boolean>(SqlTypeName.VARCHAR, isNullable));
       } else if(type.isEnum()) {
-        types.add(SqlTypeName.VARCHAR);
+        types.add(new ImmutablePair<SqlTypeName, Boolean>(SqlTypeName.VARCHAR, isNullable));
       } else if (type == Timestamp.class) {
-        types.add(SqlTypeName.TIMESTAMP);
+        types.add(new ImmutablePair<SqlTypeName, Boolean>(SqlTypeName.TIMESTAMP, isNullable));
       } else {
         throw new RuntimeException(String.format("PojoDataType doesn't yet support conversions from type [%s].", type));
       }
@@ -81,17 +81,12 @@ public class PojoDataType extends RecordDataType {
   }
 
   @Override
-  public List<SqlTypeName> getFieldSqlTypeNames() {
+  public List<ImmutablePair<SqlTypeName,Boolean>> getFieldSqlTypeNames() {
     return types;
   }
 
   @Override
   public List<String> getFieldNames() {
     return names;
-  }
-
-  @Override
-  public List<Boolean> getFieldNullability() {
-    return nullables;
   }
 }

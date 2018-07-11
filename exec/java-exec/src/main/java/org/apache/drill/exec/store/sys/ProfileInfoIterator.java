@@ -23,8 +23,8 @@ import com.google.common.collect.Iterators;
 import org.apache.drill.exec.ops.ExecutorFragmentContext;
 import org.apache.drill.exec.proto.UserBitShared;
 import org.apache.drill.exec.proto.UserBitShared.QueryProfile;
-import org.apache.drill.exec.store.pojo.Nullability;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.sql.Timestamp;
 import java.util.Iterator;
@@ -115,10 +115,10 @@ public class ProfileInfoIterator extends ProfileIterator {
 
     private static final ProfileInfo DEFAULT = new ProfileInfo();
 
-    @Nullability(isNullable = false)
+    @Nonnull
     public final String queryId;
     public final Timestamp startTime;
-    @Nullability(isNullable = false)
+    @Nonnull
     public final String foreman;
     public final long fragments;
     public final String user;

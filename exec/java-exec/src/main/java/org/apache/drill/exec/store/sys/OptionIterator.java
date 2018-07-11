@@ -21,6 +21,8 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.annotation.Nonnull;
+
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import org.apache.drill.exec.ops.FragmentContext;
@@ -29,7 +31,6 @@ import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.server.options.OptionValue;
 import org.apache.drill.exec.server.options.OptionValue.Kind;
 import org.apache.drill.exec.server.options.OptionValue.OptionScope;
-import org.apache.drill.exec.store.pojo.Nullability;
 import org.apache.drill.exec.server.options.OptionValue.AccessibleScopes;
 
 public class OptionIterator implements Iterator<Object> {
@@ -105,15 +106,15 @@ public class OptionIterator implements Iterator<Object> {
    */
   public static class OptionValueWrapper {
 
-    @Nullability(isNullable = false)
+    @Nonnull
     public final String name;
-    @Nullability(isNullable = false)
+    @Nonnull
     public final Kind kind;
-    @Nullability(isNullable = false)
+    @Nonnull
     public final AccessibleScopes accessibleScopes;
-    @Nullability(isNullable = false)
+    @Nonnull
     public final OptionScope optionScope;
-    @Nullability(isNullable = false)
+    @Nonnull
     public final Status status;
     public final Long num_val;
     public final String string_val;

@@ -21,8 +21,8 @@ import com.google.common.collect.Lists;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.sql.type.SqlTypeName;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -31,19 +31,14 @@ import java.util.List;
 public abstract class RecordDataType {
 
   /**
-   * @return the {@link org.apache.calcite.sql.type.SqlTypeName} of columns in the table
+   * @return the {@link org.apache.calcite.sql.type.SqlTypeName} of columns in the table as a pair with its nullability
    */
-  public abstract List<SqlTypeName> getFieldSqlTypeNames();
+  public abstract List<ImmutablePair<SqlTypeName, Boolean>> getFieldSqlTypeNames();
 
   /**
    * @return the column names in the table
    */
   public abstract List<String> getFieldNames();
-
-  /**
-   * @return the nullable nature of columns in the table
-   */
-  public abstract List<Boolean> getFieldNullability();
 
   /**
    * This method constructs a {@link org.apache.calcite.rel.type.RelDataType} based on the
@@ -53,17 +48,12 @@ public abstract class RecordDataType {
    * @return the constructed type
    */
   public final RelDataType getRowType(RelDataTypeFactory factory) {
-    final List<SqlTypeName> types = getFieldSqlTypeNames();
+    final List<ImmutablePair<SqlTypeName, Boolean>> types = getFieldSqlTypeNames();
     final List<String> names = getFieldNames();
-    final List<Boolean> nullables = getFieldNullability();
     final List<RelDataType> fields = Lists.newArrayList();
-    Iterator<SqlTypeName> typesIter = types.listIterator();
-    Iterator<Boolean> nullabilityIter = nullables.listIterator();
 
-    //Iterate simultaneously for nullable datatypes
-    while (typesIter.hasNext() && nullabilityIter.hasNext()) {
-      final SqlTypeName typeName = typesIter.next();
-      final boolean typeNullability = nullabilityIter.next();
+    for (ImmutablePair<SqlTypeName, Boolean> sqlTypePair : types) {
+      final SqlTypeName typeName = sqlTypePair.getLeft();
       final RelDataType tmpRDT;
       switch (typeName) {
         case VARCHAR:
@@ -73,7 +63,7 @@ public abstract class RecordDataType {
           tmpRDT = factory.createSqlType(typeName);
       }
       //Add [Non]Nullable RelDataType
-      fields.add(factory.createTypeWithNullability(tmpRDT, typeNullability));
+      fields.add(factory.createTypeWithNullability(tmpRDT, sqlTypePair.getRight()));
     }
     return factory.createStructType(fields, names);
   }
