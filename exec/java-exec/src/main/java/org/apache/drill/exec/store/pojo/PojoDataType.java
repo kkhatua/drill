@@ -78,7 +78,7 @@ public class PojoDataType extends RecordDataType {
   }
 
   @Override
-  public List<SimpleImmutableEntry<SqlTypeName,Boolean>> getFieldSqlTypeNames() {
+  public List<SimpleImmutableEntry<SqlTypeName, Boolean>> getFieldSqlTypeNames() {
     return types;
   }
 
