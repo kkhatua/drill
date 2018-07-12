@@ -21,17 +21,17 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-import javax.annotation.Nonnull;
-
-import com.google.common.collect.Iterators;
-import com.google.common.collect.Lists;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.server.options.DrillConfigIterator;
 import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.server.options.OptionValue;
+import org.apache.drill.exec.server.options.OptionValue.AccessibleScopes;
 import org.apache.drill.exec.server.options.OptionValue.Kind;
 import org.apache.drill.exec.server.options.OptionValue.OptionScope;
-import org.apache.drill.exec.server.options.OptionValue.AccessibleScopes;
+import org.apache.drill.exec.store.pojo.NonNullable;
+
+import com.google.common.collect.Iterators;
+import com.google.common.collect.Lists;
 
 public class OptionIterator implements Iterator<Object> {
 //  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(OptionIterator.class);
@@ -106,15 +106,15 @@ public class OptionIterator implements Iterator<Object> {
    */
   public static class OptionValueWrapper {
 
-    @Nonnull
+    @NonNullable
     public final String name;
-    @Nonnull
+    @NonNullable
     public final Kind kind;
-    @Nonnull
+    @NonNullable
     public final AccessibleScopes accessibleScopes;
-    @Nonnull
+    @NonNullable
     public final OptionScope optionScope;
-    @Nonnull
+    @NonNullable
     public final Status status;
     public final Long num_val;
     public final String string_val;

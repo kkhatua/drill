@@ -21,11 +21,8 @@ import java.sql.Timestamp;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 import java.util.Map.Entry;
-
-import javax.annotation.Nonnull;
-
+import java.util.Set;
 import java.util.TimeZone;
 
 import org.apache.drill.exec.ExecConstants;
@@ -35,6 +32,7 @@ import org.apache.drill.exec.rpc.user.UserServer.BitToUserConnectionConfig;
 import org.apache.drill.exec.rpc.user.UserSession;
 import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.server.rest.profile.SimpleDurationFormat;
+import org.apache.drill.exec.store.pojo.NonNullable;
 import org.apache.drill.exec.util.ImpersonationUtil;
 import org.joda.time.DateTime;
 
@@ -102,18 +100,18 @@ public class BitToUserConnectionIterator implements Iterator<Object> {
 
   public static class ConnectionInfo {
     public String user;
-    @Nonnull
+    @NonNullable
     public String client;
-    @Nonnull
+    @NonNullable
     public String drillbit;
-    @Nonnull
+    @NonNullable
     public Timestamp established;
     public String duration;
     public int queries;
     public boolean isAuthenticated;
     public boolean isEncrypted;
     public boolean usingSSL;
-    @Nonnull
+    @NonNullable
     public String session;
 
     public ConnectionInfo(Entry<BitToUserConnection, BitToUserConnectionConfig> connectionConfigPair, String hostname) {
