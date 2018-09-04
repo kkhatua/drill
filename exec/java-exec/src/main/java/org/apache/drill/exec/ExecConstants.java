@@ -115,25 +115,34 @@ public final class ExecConstants {
 
   // Hash Join Options
   public static final String HASHJOIN_HASHTABLE_CALC_TYPE_KEY = "exec.hashjoin.hash_table_calc_type";
-  public static final StringValidator HASHJOIN_HASHTABLE_CALC_TYPE = new StringValidator(HASHJOIN_HASHTABLE_CALC_TYPE_KEY, null);
+  public static final StringValidator HASHJOIN_HASHTABLE_CALC_TYPE = new StringValidator(HASHJOIN_HASHTABLE_CALC_TYPE_KEY,
+    new OptionDescription("Hash Join Memory Calculator type, either LEAN (default) or CONSERVATIVE"));
   public static final String HASHJOIN_SAFETY_FACTOR_KEY = "exec.hashjoin.safety_factor";
-  public static final DoubleValidator HASHJOIN_SAFETY_FACTOR = new RangeDoubleValidator(HASHJOIN_SAFETY_FACTOR_KEY, 1.0, Double.MAX_VALUE, null);
+  public static final DoubleValidator HASHJOIN_SAFETY_FACTOR = new RangeDoubleValidator(HASHJOIN_SAFETY_FACTOR_KEY, 1.0, Double.MAX_VALUE,
+    new OptionDescription("Hash Join Memory Calculation Safety - multiplies internal size estimate - default 1.0 "));
   public static final String HASHJOIN_HASH_DOUBLE_FACTOR_KEY = "exec.hashjoin.hash_double_factor";
-  public static final DoubleValidator HASHJOIN_HASH_DOUBLE_FACTOR = new RangeDoubleValidator(HASHJOIN_HASH_DOUBLE_FACTOR_KEY, 1.0, Double.MAX_VALUE, null);
+  public static final DoubleValidator HASHJOIN_HASH_DOUBLE_FACTOR = new RangeDoubleValidator(HASHJOIN_HASH_DOUBLE_FACTOR_KEY, 1.0, Double.MAX_VALUE,
+    new OptionDescription("Hash Join Memory Calculations - Doubling factor for the Hash-Table, default 2.0"));
   public static final String HASHJOIN_FRAGMENTATION_FACTOR_KEY = "exec.hashjoin.fragmentation_factor";
-  public static final DoubleValidator HASHJOIN_FRAGMENTATION_FACTOR = new RangeDoubleValidator(HASHJOIN_FRAGMENTATION_FACTOR_KEY, 1.0, Double.MAX_VALUE, null);
+  public static final DoubleValidator HASHJOIN_FRAGMENTATION_FACTOR = new RangeDoubleValidator(HASHJOIN_FRAGMENTATION_FACTOR_KEY, 1.0, Double.MAX_VALUE,
+    new OptionDescription("Hash Join Memory Calculations - Multiply internal estimates to account for fragmentation, default 1.33"));
   public static final String HASHJOIN_NUM_ROWS_IN_BATCH_KEY = "exec.hashjoin.num_rows_in_batch";
-  public static final LongValidator HASHJOIN_NUM_ROWS_IN_BATCH_VALIDATOR = new RangeLongValidator(HASHJOIN_NUM_ROWS_IN_BATCH_KEY, 1, 65536, null);
+  public static final LongValidator HASHJOIN_NUM_ROWS_IN_BATCH_VALIDATOR = new RangeLongValidator(HASHJOIN_NUM_ROWS_IN_BATCH_KEY, 1, 65536,
+    new OptionDescription("Hash Join: Number of rows in the _internal_ batches, default 1024"));
   public static final String HASHJOIN_MAX_BATCHES_IN_MEMORY_KEY = "exec.hashjoin.max_batches_in_memory";
-  public static final LongValidator HASHJOIN_MAX_BATCHES_IN_MEMORY_VALIDATOR = new RangeLongValidator(HASHJOIN_MAX_BATCHES_IN_MEMORY_KEY, 0, 65536, null);
+  public static final LongValidator HASHJOIN_MAX_BATCHES_IN_MEMORY_VALIDATOR = new RangeLongValidator(HASHJOIN_MAX_BATCHES_IN_MEMORY_KEY, 0, 65536,
+    new OptionDescription("Hash Join (used for testing purposes): Max number of batches allowed in memory before spilling is enforced."));
   public static final String HASHJOIN_NUM_PARTITIONS_KEY = "exec.hashjoin.num_partitions";
-  public static final LongValidator HASHJOIN_NUM_PARTITIONS_VALIDATOR = new RangeLongValidator(HASHJOIN_NUM_PARTITIONS_KEY, 1, 128, null); // 1 means - no spilling
+  public static final LongValidator HASHJOIN_NUM_PARTITIONS_VALIDATOR = new RangeLongValidator(HASHJOIN_NUM_PARTITIONS_KEY, 1, 128,
+    new OptionDescription("Hash Join: Initial number of internal partitions, default 32. May go down when memory is too small. If set to 1 then spilling is disabled."));
   public static final String HASHJOIN_MAX_MEMORY_KEY = "drill.exec.hashjoin.mem_limit";
-  public static final LongValidator HASHJOIN_MAX_MEMORY_VALIDATOR = new RangeLongValidator(HASHJOIN_MAX_MEMORY_KEY, 0L, Long.MAX_VALUE, null);
+  public static final LongValidator HASHJOIN_MAX_MEMORY_VALIDATOR = new RangeLongValidator(HASHJOIN_MAX_MEMORY_KEY, 0L, Long.MAX_VALUE,
+    new OptionDescription("Hash Join (used for testing purposes): If non-zero, enforce this as the max memory for the operator. Default is 0 - disabled."));
   public static final String HASHJOIN_SPILL_DIRS = "drill.exec.hashjoin.spill.directories";
   public static final String HASHJOIN_SPILL_FILESYSTEM = "drill.exec.hashjoin.spill.fs";
   public static final String HASHJOIN_FALLBACK_ENABLED_KEY = "drill.exec.hashjoin.fallback.enabled";
-  public static final BooleanValidator HASHJOIN_FALLBACK_ENABLED_VALIDATOR = new BooleanValidator(HASHJOIN_FALLBACK_ENABLED_KEY, null);
+  public static final BooleanValidator HASHJOIN_FALLBACK_ENABLED_VALIDATOR = new BooleanValidator(HASHJOIN_FALLBACK_ENABLED_KEY,
+    new OptionDescription("When false (default), the Hash Join would fail when memory is set too low. When true, memory limits would be ignored."));
   public static final String HASHJOIN_ENABLE_RUNTIME_FILTER_KEY = "exec.hashjoin.enable.runtime_filter";
   public static final BooleanValidator HASHJOIN_ENABLE_RUNTIME_FILTER = new BooleanValidator(HASHJOIN_ENABLE_RUNTIME_FILTER_KEY, null);
   public static final String HASHJOIN_BLOOM_FILTER_MAX_SIZE_KEY = "exec.hashjoin.bloom_filter.max.size";
@@ -145,23 +154,28 @@ public final class ExecConstants {
 
   // Hash Aggregate Options
   public static final String HASHAGG_NUM_PARTITIONS_KEY = "exec.hashagg.num_partitions";
-  public static final LongValidator HASHAGG_NUM_PARTITIONS_VALIDATOR = new RangeLongValidator(HASHAGG_NUM_PARTITIONS_KEY, 1, 128, null); // 1 means - no spilling
+  public static final LongValidator HASHAGG_NUM_PARTITIONS_VALIDATOR = new RangeLongValidator(HASHAGG_NUM_PARTITIONS_KEY, 1, 128,
+    new OptionDescription("Hash Aggregate: Initial number of internal partitions, default 32. May go down when memory is too small. If set to 1 then spilling is disabled."));
   public static final String HASHAGG_MAX_MEMORY_KEY = "exec.hashagg.mem_limit";
-  public static final LongValidator HASHAGG_MAX_MEMORY_VALIDATOR = new RangeLongValidator(HASHAGG_MAX_MEMORY_KEY, 0, Integer.MAX_VALUE, null);
+  public static final LongValidator HASHAGG_MAX_MEMORY_VALIDATOR = new RangeLongValidator(HASHAGG_MAX_MEMORY_KEY, 0, Integer.MAX_VALUE,
+    new OptionDescription("Hash Aggregate (used for testing purposes): If non-zero, enforce this as the max memory for the operator. Default is 0 - disabled."));
   // min batches is used for tuning (each partition needs so many batches when planning the number of partitions,
   // or reserve this number when calculating whether the remaining available memory is too small and requires a spill.)
   // Low value may OOM (e.g., when incoming rows become wider), higher values use fewer partitions but are safer
   public static final String HASHAGG_MIN_BATCHES_PER_PARTITION_KEY = "exec.hashagg.min_batches_per_partition";
-  public static final LongValidator HASHAGG_MIN_BATCHES_PER_PARTITION_VALIDATOR = new RangeLongValidator(HASHAGG_MIN_BATCHES_PER_PARTITION_KEY, 1, 5, null);
+  public static final LongValidator HASHAGG_MIN_BATCHES_PER_PARTITION_VALIDATOR = new RangeLongValidator(HASHAGG_MIN_BATCHES_PER_PARTITION_KEY, 1, 5,
+    new OptionDescription("Hash Aggregate memory needs estimation - Safety assumption on minimum number of batches needed by each partition. Default is 2."));
   // Can be turned off mainly for testing. Memory prediction is used to decide on when to spill to disk; with this option off,
   // spill would be triggered only by another mechanism -- "catch OOMs and then spill".
   public static final String HASHAGG_USE_MEMORY_PREDICTION_KEY = "exec.hashagg.use_memory_prediction";
-  public static final BooleanValidator HASHAGG_USE_MEMORY_PREDICTION_VALIDATOR = new BooleanValidator(HASHAGG_USE_MEMORY_PREDICTION_KEY, null);
+  public static final BooleanValidator HASHAGG_USE_MEMORY_PREDICTION_VALIDATOR = new BooleanValidator(HASHAGG_USE_MEMORY_PREDICTION_KEY,
+    new OptionDescription("Hash Aggregate - When set true (default), try to spill proactively early based on memory predictions."));
 
   public static final String HASHAGG_SPILL_DIRS = "drill.exec.hashagg.spill.directories";
   public static final String HASHAGG_SPILL_FILESYSTEM = "drill.exec.hashagg.spill.fs";
   public static final String HASHAGG_FALLBACK_ENABLED_KEY = "drill.exec.hashagg.fallback.enabled";
-  public static final BooleanValidator HASHAGG_FALLBACK_ENABLED_VALIDATOR = new BooleanValidator(HASHAGG_FALLBACK_ENABLED_KEY, null);
+  public static final BooleanValidator HASHAGG_FALLBACK_ENABLED_VALIDATOR = new BooleanValidator(HASHAGG_FALLBACK_ENABLED_KEY,
+    new OptionDescription("When false (default), the Hash Aggregate would fail when memory is set too low. When true, memory limits would be ignored."));
 
   public static final String SSL_PROVIDER = "drill.exec.ssl.provider"; // valid values are "JDK", "OPENSSL" // default JDK
   public static final String SSL_PROTOCOL = "drill.exec.ssl.protocol"; // valid values are SSL, SSLV2, SSLV3, TLS, TLSV1, TLSv1.1, TLSv1.2(default)
