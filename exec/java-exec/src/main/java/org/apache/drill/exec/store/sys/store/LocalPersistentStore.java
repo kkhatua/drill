@@ -29,11 +29,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
+//import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantLock;
+//import java.util.concurrent.locks.ReadWriteLock;
+//import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+//import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
@@ -57,28 +59,26 @@ import org.apache.hadoop.fs.PathFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Stopwatch;
+import org.apache.drill.shaded.guava.com.google.common.base.Stopwatch;
 import org.apache.drill.shaded.guava.com.google.common.base.Function;
 import org.apache.drill.shaded.guava.com.google.common.base.Preconditions;
 import org.apache.drill.shaded.guava.com.google.common.collect.Iterables;
 import org.apache.drill.shaded.guava.com.google.common.collect.Lists;
-import org.apache.hadoop.fs.PathFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class LocalPersistentStore<V> extends BasePersistentStore<V> {
   private static final Logger logger = LoggerFactory.getLogger(LocalPersistentStore.class);
 
   //Provides a threshold above which we report an event's time
-  private static final long RESPONSE_TIME_THRESHOLD_MSEC = 2000L;
+  //TODO: Make this parameterizable
+  private static final long RESPONSE_TIME_THRESHOLD_MSEC = /*200*/0L;
 
   private static final int DRILL_SYS_FILE_EXT_SIZE = DRILL_SYS_FILE_SUFFIX.length();
   private final Path basePath;
   private final PersistentStoreConfig<V> config;
   private final DrillFileSystem fs;
   private int version = -1;
-  private final Lock /*ReadWriteLock*/ lock = new ReentrantLock(true); //new ReentrantReadWriteLock();
-  private final AutoCloseableLock profileStoreLock = new AutoCloseableLock(lock/*.writeLock()*/);
+  //OBSOLETE? private final Lock /*ReadWriteLock*/ lock = new ReentrantLock(true); //new ReentrantReadWriteLock();
+  private final AutoCloseableLock profileStoreLock; // = new AutoCloseableLock(lock/*.writeLock()*/);
   private Function<String, Entry<String, V>> stringTransformer;
   private Function<FileStatus, Entry<String, V>> fileStatusTransformer;
 
@@ -99,6 +99,11 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
     this.basePath = new Path(base, config.getName());
     this.config = config;
     this.fs = fs;
+
+    //Initialize Locks
+    ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+    profileStoreLock = new AutoCloseableLock(readWriteLock.writeLock());
+
     //MRU Profile Cache
     this.profilesSet = new ProfileSet(drillConfig.getInt(ExecConstants.HTTP_MAX_PROFILES));
     this.basePathLastModified = 0L;
@@ -190,7 +195,6 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
   //Get an iterator based on the current state of the contents on the FileSystem
   @Override
   public Iterator<Map.Entry<String, V>> getRange(int skip, int take) {
-    try (Closeable lock = profileStoreLock.open()) {
       try {
         //Recursively look for files (can't apply filename filters, or else sub-directories get excluded)
         List<FileStatus> fileStatuses = DrillFileSystemUtil.listFiles(fs, basePath, true);
@@ -218,11 +222,10 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
-    }
   }
 
   /**
-   * Get range of potentially cached profiles (primary usecase is for the WebServer)
+   * Get range of potentially cached list of profiles (primary usecase is for the WebServer)
    * @param skip
    * @param take
    * @return iterator of profiles
@@ -254,7 +257,7 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
             || (skip + take) > maxSetCapacity ) {             //Does requestSize exceed current cached size
 
           if (maxSetCapacity < (skip + take)) {
-            logger.debug("Updating last Max Capacity from {} to {}", maxSetCapacity , (skip + take) );
+            logger.debug("Updating last Max Capacity from {} to {}", maxSetCapacity, (skip + take) );
             maxSetCapacity = skip + take;
           }
           //Mark Start Time
@@ -297,8 +300,8 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
 
           //Report Lag
           if (listAndBuildWatch.stop().elapsed(TimeUnit.MILLISECONDS) >= RESPONSE_TIME_THRESHOLD_MSEC) {
-            logger.warn("Took {} ms to list & map {} profiles (out of {} profiles in store)", listAndBuildWatch.elapsed(TimeUnit.MILLISECONDS)
-                , profilesSet.size(), numProfilesInStore);
+            logger.warn("Took {} ms to list & map {} profiles (out of {} profiles in store)", listAndBuildWatch.elapsed(TimeUnit.MILLISECONDS),
+                profilesSet.size(), numProfilesInStore);
           }
           //Recording last checked modified time and the most recent profile
           basePathLastModified = currBasePathModified;
