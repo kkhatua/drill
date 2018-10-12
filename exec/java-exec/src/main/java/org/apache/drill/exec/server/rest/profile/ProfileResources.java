@@ -59,6 +59,10 @@ import org.apache.drill.exec.work.WorkManager;
 import org.apache.drill.exec.work.foreman.Foreman;
 import org.glassfish.jersey.server.mvc.Viewable;
 import org.apache.drill.shaded.guava.com.google.common.base.Stopwatch;
+import org.apache.drill.shaded.guava.com.google.common.cache.CacheBuilder;
+import org.apache.drill.shaded.guava.com.google.common.cache.CacheLoader;
+import org.apache.drill.shaded.guava.com.google.common.cache.CacheLoader.InvalidCacheLoadException;
+import org.apache.drill.shaded.guava.com.google.common.cache.LoadingCache;
 //import org.apache.drill.shaded.guava.com.google.common.base.Stopwatch;
 import org.apache.drill.shaded.guava.com.google.common.collect.Lists;
 
@@ -74,6 +78,10 @@ public class ProfileResources {
 
   Stopwatch _XYZ = Stopwatch.createUnstarted();
   int _count=0;
+
+  private static LoadingCache<String, QueryProfile> completedCache;
+  private static Object completedProfilesCacheLock = new Object();
+  static int maxProfilesToLoad;
 
   public static class ProfileInfo implements Comparable<ProfileInfo> {
     private static final String TRAILING_DOTS = " ... ";
@@ -222,7 +230,10 @@ public class ProfileResources {
     }
 
     public int getMaxFetchedQueries() {
-      return work.getContext().getConfig().getInt(ExecConstants.HTTP_MAX_PROFILES);
+      if (maxProfilesToLoad == 0) {
+        maxProfilesToLoad = work.getContext().getConfig().getInt(ExecConstants.HTTP_MAX_PROFILES);
+      }
+      return maxProfilesToLoad;
     }
 
     public List<String> getErrors() { return errors; }
@@ -239,11 +250,11 @@ public class ProfileResources {
     try {
       Stopwatch watch = Stopwatch.createStarted();
       final QueryProfileStoreContext profileStoreContext = work.getContext().getProfileStoreContext();
-      logger.info("work.getContext().getProfileStoreContext() : {} ms", watch.elapsed(TimeUnit.MILLISECONDS));
+      //logger.info("work.getContext().getProfileStoreContext() : {} ms", watch.elapsed(TimeUnit.MILLISECONDS));
       final PersistentStore<QueryProfile> completed = profileStoreContext.getCompletedProfileStore();
-      logger.info("profileStoreContext.getCompletedProfileStore() : {} ms", watch.elapsed(TimeUnit.MILLISECONDS));
+      //logger.info("profileStoreContext.getCompletedProfileStore() : {} ms", watch.elapsed(TimeUnit.MILLISECONDS));
       final TransientStore<QueryInfo> running = profileStoreContext.getRunningProfileStore();
-      logger.info("profileStoreContext.getRunningProfileStore() : {} ms", watch.elapsed(TimeUnit.MILLISECONDS));
+      //logger.info("profileStoreContext.getRunningProfileStore() : {} ms", watch.elapsed(TimeUnit.MILLISECONDS));
 
       final List<String> errors = Lists.newArrayList();
 
@@ -269,17 +280,19 @@ public class ProfileResources {
           logger.error("Error getting running query info.", e);
         }
       }
-      logger.info("populate running.entries() : {} ms", watch.elapsed(TimeUnit.MILLISECONDS));
+      //logger.info("populate running.entries() : {} ms", watch.elapsed(TimeUnit.MILLISECONDS));
 
       Collections.sort(runningQueries, Collections.reverseOrder());
-      logger.info("sort runningQueries() : {} ms", watch.elapsed(TimeUnit.MILLISECONDS));
+      //logger.info("sort runningQueries() : {} ms", watch.elapsed(TimeUnit.MILLISECONDS));
 
       //Defining #Profiles to load
-      int maxProfilesToLoad = work.getContext().getConfig().getInt(ExecConstants.HTTP_MAX_PROFILES);
+      //TODO: one time load. int maxProfilesToLoad = work.getContext().getConfig().getInt(ExecConstants.HTTP_MAX_PROFILES);
       String maxProfilesParams = uriInfo.getQueryParameters().getFirst(MAX_QPROFILES_PARAM);
       if (maxProfilesParams != null && !maxProfilesParams.isEmpty()) {
         maxProfilesToLoad = Integer.valueOf(maxProfilesParams);
       }
+
+      initCompletedProfilesCache();
 
       final List<ProfileInfo> finishedQueries = new ArrayList<ProfileResources.ProfileInfo>(maxProfilesToLoad);
 
@@ -287,14 +300,22 @@ public class ProfileResources {
       logger.info("completed.getRange(..) : {} ms", watch.elapsed(TimeUnit.MILLISECONDS));
       Stopwatch _x = Stopwatch.createUnstarted();
       Stopwatch _y = Stopwatch.createUnstarted();
+      int _missCount = 0;
       while (range.hasNext()) {
         try {
           _x.start();
           final Map.Entry<String, QueryProfile> profileEntry = range.next();
           _x.stop();
-          String queryId = profileEntry.getKey();
+          final String queryId = profileEntry.getKey();
           _y.start();
-          final QueryProfile profile = profileEntry.getValue();
+          QueryProfile profile;
+          try {
+            profile = completedCache.get(queryId);
+          } catch (InvalidCacheLoadException e) {
+            profile = profileEntry.getValue();
+            completedCache.put(queryId, profile);
+            _missCount++;
+          }
           _y.stop();
           final String user = profile.getUser();
           boolean canManageUserProfile = principal.canManageProfileOf(user);
@@ -311,8 +332,9 @@ public class ProfileResources {
           logger.error("Error getting finished query profile.", e);
         }
       }
-      logger.info("filtered queryProfiles range.next() : {} ms [range.next: {} ms / profileEntry.getValue: {} ms]", watch.elapsed(TimeUnit.MILLISECONDS),
+      logger.info("filtered queryProfiles range.next() : {} ms [range.next: {} ms ({} misses) / profileEntry.getValue: {} ms]", watch.elapsed(TimeUnit.MILLISECONDS),
           _y.elapsed(TimeUnit.MILLISECONDS),
+          _missCount,
           _x.elapsed(TimeUnit.MILLISECONDS));
       Collections.sort(finishedQueries, Collections.reverseOrder());
       logger.info("sort finishedQueries() : {} ms", watch.elapsed(TimeUnit.MILLISECONDS));
@@ -321,6 +343,27 @@ public class ProfileResources {
       throw UserException.resourceError(e)
       .message("Failed to get profiles from persistent or ephemeral store.")
       .build(logger);
+    }
+  }
+
+
+  //Using Guava cache to hold QueryProfile(s)
+  private void initCompletedProfilesCache() {
+    if (completedCache == null) {
+      synchronized (completedProfilesCacheLock) {
+        if (completedCache == null) {
+          maxProfilesToLoad = work.getContext().getConfig().getInt(ExecConstants.HTTP_MAX_PROFILES);
+          completedCache = CacheBuilder.newBuilder()
+              .maximumSize(maxProfilesToLoad)
+              .build(
+                  new CacheLoader<String, QueryProfile>() {
+                    @Override
+                    public QueryProfile load(String queryIdKey) throws Exception {
+                      return null; //Load not needed as profiles are put into cache as misses are discovered
+                    }
+                  });
+        }
+      }
     }
   }
 
