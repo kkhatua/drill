@@ -74,9 +74,14 @@ public class ProfileResources {
   @Inject SecurityContext sc;
 
   //Cache for Profiles
+  static int commonSize=100;
   private static final Cache<String, ProfileWrapper> profileWrapperCache = CacheBuilder.newBuilder()
-    .maximumSize(100) //TODO
-    .build();
+      .maximumSize(commonSize) //TODO
+      .build();
+
+  private static final Cache<String, String> profileJsonCache = CacheBuilder.newBuilder()
+      .maximumSize(commonSize) //TODO
+      .build();
 
   public static class ProfileInfo implements Comparable<ProfileInfo> {
     private static final int QUERY_SNIPPET_MAX_CHAR = 150;
@@ -367,7 +372,33 @@ public class ProfileResources {
   @Produces(MediaType.APPLICATION_JSON)
   public String getProfileJSON(@PathParam("queryid") String queryId) {
     try {
-      return new String(work.getContext().getProfileStoreContext().getProfileStoreConfig().getSerializer().serialize(getQueryProfile(queryId)));
+    //Check Cache
+      long start = System.currentTimeMillis();
+      long startRealFetch=0, startWrapping=0, startCacheInsert=0;
+      String profileJson = profileJsonCache.getIfPresent(queryId);
+      if (profileJson == null) {
+        startRealFetch = System.currentTimeMillis();
+        QueryProfile queryProfile = getQueryProfile(queryId);
+        startWrapping = System.currentTimeMillis();
+        profileJson = new String(work.getContext().getProfileStoreContext().getProfileStoreConfig().getSerializer().serialize(queryProfile));
+        if (isCompleted(queryProfile.getState())) {
+          startCacheInsert = System.currentTimeMillis();
+          profileJsonCache.put(queryId, profileJson);
+        }
+
+      }
+      long now = System.currentTimeMillis();
+      logger.info("jEndToEnd : {} ms\n"
+          + "jRealFetch : {} ms\n"
+          + "jWrapping : {} ms\\n"
+          + "jCacheInsert : {} ms\\n",
+          now-start,
+          startRealFetch > 0 ? startWrapping-startRealFetch : 0,
+          startWrapping > 0 ? startCacheInsert-startWrapping : 0,
+          startCacheInsert > 0 ? now-startCacheInsert : 0
+          );
+
+      return profileJson;
     } catch (Exception e) {
       logger.debug("Failed to serialize profile for: " + queryId);
       return ("{ 'message' : 'error (unable to serialize profile)' }");
