@@ -47,6 +47,7 @@ import org.apache.drill.exec.proto.GeneralRPCProtos.Ack;
 import org.apache.drill.exec.proto.UserBitShared.QueryId;
 import org.apache.drill.exec.proto.UserBitShared.QueryInfo;
 import org.apache.drill.exec.proto.UserBitShared.QueryProfile;
+import org.apache.drill.exec.proto.UserBitShared.QueryResult.QueryState;
 import org.apache.drill.exec.proto.helper.QueryIdHelper;
 import org.apache.drill.exec.server.rest.DrillRestServer.UserAuthEnabled;
 import org.apache.drill.exec.server.QueryProfileStoreContext;
@@ -56,6 +57,8 @@ import org.apache.drill.exec.store.sys.PersistentStore;
 import org.apache.drill.exec.store.sys.PersistentStoreProvider;
 import org.apache.drill.exec.work.WorkManager;
 import org.apache.drill.exec.work.foreman.Foreman;
+import org.apache.drill.shaded.guava.com.google.common.cache.Cache;
+import org.apache.drill.shaded.guava.com.google.common.cache.CacheBuilder;
 import org.glassfish.jersey.server.mvc.Viewable;
 
 import org.apache.drill.shaded.guava.com.google.common.collect.Lists;
@@ -69,6 +72,11 @@ public class ProfileResources {
   @Inject WorkManager work;
   @Inject DrillUserPrincipal principal;
   @Inject SecurityContext sc;
+
+  //Cache for Profiles
+  private static final Cache<String, ProfileWrapper> profileWrapperCache = CacheBuilder.newBuilder()
+    .maximumSize(100) //TODO
+    .build();
 
   public static class ProfileInfo implements Comparable<ProfileInfo> {
     private static final int QUERY_SNIPPET_MAX_CHAR = 150;
@@ -370,8 +378,23 @@ public class ProfileResources {
   @Path("/profiles/{queryid}")
   @Produces(MediaType.TEXT_HTML)
   public Viewable getProfile(@PathParam("queryid") String queryId){
-    ProfileWrapper wrapper = new ProfileWrapper(getQueryProfile(queryId), work.getContext().getConfig());
+    //Check Cache
+    ProfileWrapper wrapper = profileWrapperCache.getIfPresent(queryId);
+    if (wrapper == null) {
+      QueryProfile queryProfile = getQueryProfile(queryId);
+      wrapper = new ProfileWrapper(queryProfile, work.getContext().getConfig());
+      if (isCompleted(queryProfile.getState())) {
+        profileWrapperCache.put(queryId, wrapper);
+      }
+    }
     return ViewableWithPermissions.create(authEnabled.get(), "/rest/profile/profile.ftl", sc, wrapper);
+  }
+
+  //Check if query profile is active
+  private boolean isCompleted(QueryState queryState) {
+    return (queryState.equals(QueryState.COMPLETED)
+      || queryState.equals(QueryState.FAILED)
+      || queryState.equals(QueryState.CANCELED));
   }
 
   @SuppressWarnings("resource")
