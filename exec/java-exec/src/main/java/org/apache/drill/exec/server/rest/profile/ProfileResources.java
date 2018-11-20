@@ -379,14 +379,30 @@ public class ProfileResources {
   @Produces(MediaType.TEXT_HTML)
   public Viewable getProfile(@PathParam("queryid") String queryId){
     //Check Cache
+    long start = System.currentTimeMillis();
+    long startRealFetch=0, startWrapping=0, startCacheInsert=0;
     ProfileWrapper wrapper = profileWrapperCache.getIfPresent(queryId);
+
     if (wrapper == null) {
+      startRealFetch = System.currentTimeMillis();
       QueryProfile queryProfile = getQueryProfile(queryId);
+      startWrapping = System.currentTimeMillis();
       wrapper = new ProfileWrapper(queryProfile, work.getContext().getConfig());
       if (isCompleted(queryProfile.getState())) {
+        startCacheInsert = System.currentTimeMillis();
         profileWrapperCache.put(queryId, wrapper);
       }
     }
+    long now = System.currentTimeMillis();
+    logger.info("EndToEnd : {} ms\n"
+        + "RealFetch : {} ms\n"
+        + "Wrapping : {} ms\\n"
+        + "CacheInsert : {} ms\\n",
+        now-start,
+        startRealFetch > 0 ? startWrapping-startRealFetch : 0,
+        startWrapping > 0 ? startCacheInsert-startWrapping : 0,
+        startCacheInsert > 0 ? now-startCacheInsert : 0
+        );
     return ViewableWithPermissions.create(authEnabled.get(), "/rest/profile/profile.ftl", sc, wrapper);
   }
 
