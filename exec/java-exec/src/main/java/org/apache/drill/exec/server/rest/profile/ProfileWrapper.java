@@ -37,10 +37,10 @@ import org.apache.drill.exec.proto.helper.QueryIdHelper;
 import org.apache.drill.exec.server.options.OptionList;
 import org.apache.drill.exec.server.options.OptionValue;
 import org.apache.drill.exec.server.rest.WebServer;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.drill.shaded.guava.com.google.common.base.CaseFormat;
 import org.apache.drill.shaded.guava.com.google.common.collect.Maps;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Wrapper class for a {@link #profile query profile}, so it to be presented through web UI.
@@ -72,6 +72,10 @@ public class ProfileWrapper {
 
     final List<MajorFragmentProfile> majors = new ArrayList<>(profile.getFragmentProfileList());
     Collections.sort(majors, Comparators.majorId);
+
+    //Setting warning thresholds for performance-degrading queries (DRILL-6879)
+    FragmentWrapper.setWarningThresholds(drillConfig);
+    OperatorWrapper.setWarningThresholds(drillConfig);
 
     for (final MajorFragmentProfile major : majors) {
       fragmentProfiles.add(new FragmentWrapper(major, profile.getStart()));
@@ -256,6 +260,11 @@ public class ProfileWrapper {
 
     //Unable to  estimate/calculate Specific Execution Time
     return NOT_AVAILABLE_LABEL;
+  }
+
+  //Threshold to be used by WebServer in issuing warning
+  public String getNoProgressWarningThreshold() {
+    return String.valueOf(FragmentWrapper.getProgressWarningThreshold());
   }
 
   public List<FragmentWrapper> getFragmentProfiles() {

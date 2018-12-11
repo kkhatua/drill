@@ -25,14 +25,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.drill.common.config.DrillConfig;
+import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.ops.OperatorMetricRegistry;
 import org.apache.drill.exec.proto.UserBitShared.CoreOperatorType;
 import org.apache.drill.exec.proto.UserBitShared.MetricValue;
 import org.apache.drill.exec.proto.UserBitShared.OperatorProfile;
 import org.apache.drill.exec.proto.UserBitShared.StreamProfile;
-
 import org.apache.drill.shaded.guava.com.google.common.base.Preconditions;
 
 /**
@@ -42,10 +45,6 @@ public class OperatorWrapper {
   @SuppressWarnings("unused")
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(OperatorWrapper.class);
 
-  private static final String HTML_ATTRIB_SPILLS = "spills";
-  private static final String HTML_ATTRIB_CLASS = "class";
-  private static final String HTML_ATTRIB_STYLE = "style";
-  private static final String HTML_ATTRIB_TITLE = "title";
   private static final DecimalFormat DECIMAL_FORMATTER = new DecimalFormat("#.##");
   private static final String UNKNOWN_OPERATOR = "UNKNOWN_OPERATOR";
   //Negative valued constant used for denoting invalid index to indicate absence of metric
@@ -56,6 +55,26 @@ public class OperatorWrapper {
   private final CoreOperatorType operatorType;
   private final String operatorName;
   private final int size;
+  private static AtomicBoolean initializedWarningThreshold = new AtomicBoolean();
+  private static int timeSkewMin;
+  private static double timeSkewRatio;
+  private static int scanWaitMin;
+  private static double waitSkewRatio;
+
+  //One time server setting for setting threshold warnings
+  static void setWarningThresholds(DrillConfig config) {
+    if (!initializedWarningThreshold.get()) {
+      //Implicit locking
+      if (initializedWarningThreshold.compareAndSet(false, true)) {
+        //Threshold to track if the slowest operator ran relatively slow
+        timeSkewMin = config.getInt(ExecConstants.PROFILE_WARNING_TIME_SKEW_MIN);
+        timeSkewRatio = config.getDouble(ExecConstants.PROFILE_WARNING_TIME_SKEW_RATIO_PROCESS);
+        //Threshold to track if the slowest SCAN operator spent more time in wait than processing
+        scanWaitMin = config.getInt(ExecConstants.PROFILE_WARNING_SCAN_WAIT_MIN);
+        waitSkewRatio = config.getDouble(ExecConstants.PROFILE_WARNING_TIME_SKEW_RATIO_WAIT);
+      }
+    }
+  }
 
   public OperatorWrapper(int major, List<ImmutablePair<ImmutablePair<OperatorProfile, Integer>, String>> opsAndHostsList, Map<String, String> phyOperMap) {
     Preconditions.checkArgument(opsAndHostsList.size() > 0);
@@ -107,7 +126,7 @@ public class OperatorWrapper {
       int minor = ip.getLeft().getRight();
       OperatorProfile op = ip.getLeft().getLeft();
 
-      attributeMap.put("data-order", String.valueOf(minor)); //Overwrite values from previous fragments
+      attributeMap.put(HtmlAttribute.DATA_ORDER, String.valueOf(minor)); //Overwrite values from previous fragments
       String path = new OperatorPathBuilder().setMajor(major).setMinor(minor).setOperator(op).build();
       builder.appendCell(path, attributeMap);
       builder.appendCell(ip.getRight());
@@ -154,13 +173,14 @@ public class OperatorWrapper {
     //Select background color from palette
     String opTblBgColor = OPERATOR_OVERVIEW_BGCOLOR_PALETTE[major%OPERATOR_OVERVIEW_BGCOLOR_PALETTE.length];
     String path = new OperatorPathBuilder().setMajor(major).setOperator(firstProfile).build();
-    tb.appendCell(path, null, null, opTblBgColor);
+    tb.appendCell(path, opTblBgColor, null);
     tb.appendCell(operatorName);
 
     //Check if spill information is available
     int spillCycleMetricIndex = getSpillCycleMetricIndex(operatorType);
     boolean isSpillableOp = (spillCycleMetricIndex != NO_SPILL_METRIC_INDEX);
     boolean hasSpilledToDisk = false;
+    boolean isScanOp = operatorName.endsWith("SCAN");
 
     //Get MajorFragment Busy+Wait Time Tally
     long majorBusyNanos = majorFragmentBusyTally.get(new OperatorPathBuilder().setMajor(major).build());
@@ -208,15 +228,46 @@ public class OperatorWrapper {
     tb.appendNanos(Math.round(setupSum / size));
     tb.appendNanos(longSetup.getLeft().getSetupNanos());
 
+    HashMap<String, String> timeSkewMap = null;
     final ImmutablePair<OperatorProfile, Integer> longProcess = Collections.max(opList, Comparators.processTime);
-    tb.appendNanos(Math.round(processSum / size));
-    tb.appendNanos(longProcess.getLeft().getProcessNanos());
+    long avgProcTime = Math.round(processSum / size);
+    tb.appendNanos(avgProcTime);
+    long maxProcTime = longProcess.getLeft().getProcessNanos();
+    double maxSkew = (avgProcTime > 0) ? maxProcTime/Double.valueOf(avgProcTime) : 0.0d;
+    if (avgProcTime > TimeUnit.SECONDS.toNanos(timeSkewMin) && maxSkew > timeSkewRatio ) {
+      timeSkewMap = new HashMap<String, String>();
+      timeSkewMap.put(HtmlAttribute.CLASS, HtmlAttribute.CLASS_VALUE_TIME_SKEW_TAG);
+      timeSkewMap.put(HtmlAttribute.TITLE,  "One fragment took " + DECIMAL_FORMATTER.format(maxSkew) + " longer than average");
+      timeSkewMap.put(HtmlAttribute.STYLE, HtmlAttribute.STYLE_VALUE_CURSOR_HELP);
+    }
+    tb.appendNanos(maxProcTime, timeSkewMap);
 
+    timeSkewMap = null; //Resetting
     final ImmutablePair<OperatorProfile, Integer> shortWait = Collections.min(opList, Comparators.waitTime);
     final ImmutablePair<OperatorProfile, Integer> longWait = Collections.max(opList, Comparators.waitTime);
     tb.appendNanos(shortWait.getLeft().getWaitNanos());
-    tb.appendNanos(Math.round(waitSum / size));
-    tb.appendNanos(longWait.getLeft().getWaitNanos());
+    long avgWaitTime = Math.round(waitSum / size);
+
+    //Slow Scan Warning
+    HashMap<String, String> slowScanMap = null;
+    if (isScanOp && (avgWaitTime > TimeUnit.SECONDS.toNanos(scanWaitMin)) && (avgWaitTime > avgProcTime)) {
+      slowScanMap = new HashMap<String, String>();
+      slowScanMap.put(HtmlAttribute.CLASS, HtmlAttribute.CLASS_VALUE_SCAN_WAIT_TAG);
+      slowScanMap.put(HtmlAttribute.TITLE, "Avg Wait Time &gt; Avg Processing Time");
+      slowScanMap.put(HtmlAttribute.STYLE, HtmlAttribute.STYLE_VALUE_CURSOR_HELP);
+    }
+    tb.appendNanos(avgWaitTime, slowScanMap);
+
+    long maxWaitTime = longWait.getLeft().getWaitNanos();
+    //Skewed Wait Warning
+    maxSkew = (avgWaitTime > 0) ? maxWaitTime/Double.valueOf(avgWaitTime) : 0.0d;
+    if (avgWaitTime > TimeUnit.SECONDS.toNanos(timeSkewMin) && maxSkew > waitSkewRatio) {
+      timeSkewMap = new HashMap<String, String>();
+      timeSkewMap.put(HtmlAttribute.CLASS, HtmlAttribute.CLASS_VALUE_TIME_SKEW_TAG);
+      timeSkewMap.put(HtmlAttribute.TITLE, "One fragment waited " + DECIMAL_FORMATTER.format(maxSkew) + " longer than average");
+      timeSkewMap.put(HtmlAttribute.STYLE, HtmlAttribute.STYLE_VALUE_CURSOR_HELP);
+    }
+    tb.appendNanos(maxWaitTime, timeSkewMap);
 
     tb.appendPercent(processSum / majorBusyNanos);
     tb.appendPercent(processSum / majorFragmentBusyTallyTotal);
@@ -232,15 +283,15 @@ public class OperatorWrapper {
       avgSpillMap = new HashMap<>();
       //Average SpillCycle
       double avgSpillCycle = spillCycleSum/size;
-      avgSpillMap.put(HTML_ATTRIB_TITLE, DECIMAL_FORMATTER.format(avgSpillCycle) + " spills on average");
-      avgSpillMap.put(HTML_ATTRIB_STYLE, "cursor:help;" + spillCycleMax);
-      avgSpillMap.put(HTML_ATTRIB_CLASS, "spill-tag"); //JScript will inject Icon
-      avgSpillMap.put(HTML_ATTRIB_SPILLS, DECIMAL_FORMATTER.format(avgSpillCycle)); //JScript will inject Count
+      avgSpillMap.put(HtmlAttribute.TITLE, DECIMAL_FORMATTER.format(avgSpillCycle) + " spills on average");
+      avgSpillMap.put(HtmlAttribute.STYLE, HtmlAttribute.STYLE_VALUE_CURSOR_HELP);
+      avgSpillMap.put(HtmlAttribute.CLASS, HtmlAttribute.CLASS_VALUE_SPILL_TAG); //JScript will inject Icon
+      avgSpillMap.put(HtmlAttribute.SPILLS, DECIMAL_FORMATTER.format(avgSpillCycle)); //JScript will inject Count
       maxSpillMap = new HashMap<>();
-      maxSpillMap.put(HTML_ATTRIB_TITLE, "Most # spills: " + spillCycleMax);
-      maxSpillMap.put(HTML_ATTRIB_STYLE, "cursor:help;" + spillCycleMax);
-      maxSpillMap.put(HTML_ATTRIB_CLASS, "spill-tag"); //JScript will inject Icon
-      maxSpillMap.put(HTML_ATTRIB_SPILLS, String.valueOf(spillCycleMax)); //JScript will inject Count
+      maxSpillMap.put(HtmlAttribute.TITLE, "Most # spills: " + spillCycleMax);
+      maxSpillMap.put(HtmlAttribute.STYLE, HtmlAttribute.STYLE_VALUE_CURSOR_HELP);
+      maxSpillMap.put(HtmlAttribute.CLASS, HtmlAttribute.CLASS_VALUE_SPILL_TAG); //JScript will inject Icon
+      maxSpillMap.put(HtmlAttribute.SPILLS, String.valueOf(spillCycleMax)); //JScript will inject Count
     }
 
     tb.appendBytes(Math.round(memSum / size), avgSpillMap);
