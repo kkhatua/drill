@@ -60,7 +60,7 @@ public class ProfileWrapper {
   private final HashMap<String, Long> majorFragmentTallyMap;
   private final long majorFragmentTallyTotal;
   private final OptionList options;
-  private final boolean onlyImpersonationEnabled;
+  private final boolean impersonationOnlyEnabled;
   private Map<String, String> physicalOperatorMap;
 
   public ProfileWrapper(final QueryProfile profile, DrillConfig drillConfig) {
@@ -128,7 +128,7 @@ public class ProfileWrapper {
     }
     this.options = options;
 
-    this.onlyImpersonationEnabled = WebServer.isImpersonationOnlyEnabled(drillConfig);
+    this.impersonationOnlyEnabled = WebServer.isImpersonationOnlyEnabled(drillConfig);
   }
 
   private long tallyMajorFragmentCost(List<MajorFragmentProfile> majorFragments) {
@@ -344,8 +344,8 @@ public class ProfileWrapper {
    * @return true if impersonation is enabled without authentication,
    *         is needed to indicated if user name should be included when re-running the query
    */
-  public boolean isOnlyImpersonationEnabled() {
-    return onlyImpersonationEnabled;
+  public boolean isImpersonationOnlyEnabled() {
+    return impersonationOnlyEnabled;
   }
 
   //Generates operator names inferred from physical plan

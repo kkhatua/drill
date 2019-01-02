@@ -11,16 +11,25 @@
  *  language governing permissions and limitations under the License.
  */
 
+//Submit query with username
 function doSubmitQueryWithUserName() {
     var userName = document.getElementById("userName").value;
     if (!userName.trim()) {
         alert("Please fill in User Name field");
         return;
     }
+    submitQuery();
+}
+
+//Submit Query (used if impersonation is not enabled)
+function submitQuery() {
+    //Submit query
     $.ajax({
         type: "POST",
         beforeSend: function (request) {
-            request.setRequestHeader("User-Name", userName);
+            if (typeof userName !== 'undefined' && userName != null && userName.length > 0) {
+              request.setRequestHeader("User-Name", userName);
+            }
         },
         url: "/query",
         data: $("#queryForm").serializeArray(),
