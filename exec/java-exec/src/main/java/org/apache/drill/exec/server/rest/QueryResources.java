@@ -20,6 +20,8 @@ package org.apache.drill.exec.server.rest;
 import org.apache.drill.shaded.guava.com.google.common.base.CharMatcher;
 import org.apache.drill.shaded.guava.com.google.common.collect.ImmutableList;
 import org.apache.drill.shaded.guava.com.google.common.collect.Lists;
+import org.apache.drill.common.config.DrillConfig;
+import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.server.rest.DrillRestServer.UserAuthEnabled;
 import org.apache.drill.exec.server.rest.auth.DrillUserPrincipal;
 import org.apache.drill.exec.server.rest.QueryWrapper.QueryResult;
@@ -55,11 +57,8 @@ public class QueryResources {
   @Produces(MediaType.TEXT_HTML)
   public Viewable getQuery() {
     return ViewableWithPermissions.create(
-        authEnabled.get(),
-        "/rest/query/query.ftl",
-        sc,
-        // if impersonation is enabled without authentication, will provide mechanism to add user name to request header from Web UI
-        WebServer.isOnlyImpersonationEnabled(work.getContext().getConfig()));
+        authEnabled.get(), "/rest/query/query.ftl",
+        sc, new QueryPage(work));
   }
 
   @POST
@@ -85,20 +84,54 @@ public class QueryResources {
     try {
       final String trimmedQueryString = CharMatcher.is(';').trimTrailingFrom(query.trim());
       final QueryResult result = submitQueryJSON(new QueryWrapper(trimmedQueryString, queryType));
-
-      return ViewableWithPermissions.create(authEnabled.get(), "/rest/query/result.ftl", sc, new TabularResult(result));
+      final int displayRowsPerPage = work.getContext().getConfig().getInt(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_DEFAULTROWSPERPAGE);
+      return ViewableWithPermissions.create(authEnabled.get(), "/rest/query/result.ftl", sc, new TabularResult(result, displayRowsPerPage));
     } catch (Exception | Error e) {
       logger.error("Query from Web UI Failed", e);
       return ViewableWithPermissions.create(authEnabled.get(), "/rest/query/errorMessage.ftl", sc, e);
     }
   }
 
+  /**
+   * Model class for Query page
+   */
+  public static class QueryPage {
+    private final boolean onlyImpersonationEnabled;
+    private final boolean autoLimitEnabled;
+    private final int defaultRowsAutoLimited;
+
+    public QueryPage(WorkManager work) {
+      DrillConfig config = work.getContext().getConfig();
+      //if impersonation is enabled without authentication, will provide mechanism to add user name to request header from Web UI
+      onlyImpersonationEnabled = WebServer.isOnlyImpersonationEnabled(config);
+      autoLimitEnabled = config.getBoolean(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_AUTOLIMIT_ENABLE);
+      defaultRowsAutoLimited = config.getInt(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_AUTOLIMIT_ROWS);
+    }
+
+    public boolean isOnlyImpersonationEnabled() {
+      return onlyImpersonationEnabled;
+    }
+
+    public boolean isAutoLimitEnabled() {
+      return autoLimitEnabled;
+    }
+
+    public int getDefaultRowsAutoLimited() {
+      return defaultRowsAutoLimited;
+    }
+  }
+
+  /**
+   * Model class for Results page
+   */
   public static class TabularResult {
     private final List<String> columns;
     private final List<List<String>> rows;
     private final String queryId;
+    private final int defaultRowsPerPage;
 
-    public TabularResult(QueryResult result) {
+    public TabularResult(QueryResult result, int displayRowsPerPage) {
+      defaultRowsPerPage = displayRowsPerPage;
       queryId = result.getQueryId();
       final List<List<String>> rows = Lists.newArrayList();
       for (Map<String, String> rowMap:result.rows) {
@@ -127,6 +160,11 @@ public class QueryResources {
 
     public List<List<String>> getRows() {
       return rows;
+    }
+
+    //Used by results.ftl to render default number of pages per row
+    public int getDefaultRowsPerPage() {
+      return defaultRowsPerPage;
     }
   }
 
