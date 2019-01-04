@@ -74,7 +74,7 @@
       $('#result').dataTable( {
         "aaSorting": [],
         "scrollX" : true,
-        "lengthMenu": [[${model.getDefaultRowsPerPage()}, 25, 50, 100, -1], [${model.getDefaultRowsPerPage()}, 25, 50, 100, "All"]],
+        "lengthMenu": [[${model.getDefaultRowsPerPage()},-1], [${model.getDefaultRowsPerPage()},"ALL"]],
         "lengthChange": true,
         "dom": '<"H"lCfr>t<"F"ip>',
         "jQueryUI" : true

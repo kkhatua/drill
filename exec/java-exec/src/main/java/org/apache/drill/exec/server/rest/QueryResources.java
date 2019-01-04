@@ -18,6 +18,7 @@
 package org.apache.drill.exec.server.rest;
 
 import org.apache.drill.shaded.guava.com.google.common.base.CharMatcher;
+import org.apache.drill.shaded.guava.com.google.common.base.Joiner;
 import org.apache.drill.shaded.guava.com.google.common.collect.ImmutableList;
 import org.apache.drill.shaded.guava.com.google.common.collect.Lists;
 import org.apache.drill.common.config.DrillConfig;
@@ -38,6 +39,8 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.SecurityContext;
+
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -84,7 +87,9 @@ public class QueryResources {
     try {
       final String trimmedQueryString = CharMatcher.is(';').trimTrailingFrom(query.trim());
       final QueryResult result = submitQueryJSON(new QueryWrapper(trimmedQueryString, queryType));
-      final int displayRowsPerPage = work.getContext().getConfig().getInt(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_DEFAULTROWSPERPAGE);
+      List<Integer> rowsPerPageOptions = work.getContext().getConfig().getIntList(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_ROWS_PER_PAGE);
+      Collections.sort(rowsPerPageOptions);
+      final String displayRowsPerPage = Joiner.on(",").join(rowsPerPageOptions);
       return ViewableWithPermissions.create(authEnabled.get(), "/rest/query/result.ftl", sc, new TabularResult(result, displayRowsPerPage));
     } catch (Exception | Error e) {
       logger.error("Query from Web UI Failed", e);
@@ -104,7 +109,7 @@ public class QueryResources {
       DrillConfig config = work.getContext().getConfig();
       //if impersonation is enabled without authentication, will provide mechanism to add user name to request header from Web UI
       onlyImpersonationEnabled = WebServer.isOnlyImpersonationEnabled(config);
-      autoLimitEnabled = config.getBoolean(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_AUTOLIMIT_ENABLE);
+      autoLimitEnabled = config.getBoolean(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_AUTOLIMIT_CHECKED);
       defaultRowsAutoLimited = config.getInt(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_AUTOLIMIT_ROWS);
     }
 
@@ -128,9 +133,9 @@ public class QueryResources {
     private final List<String> columns;
     private final List<List<String>> rows;
     private final String queryId;
-    private final int defaultRowsPerPage;
+    private final String defaultRowsPerPage;
 
-    public TabularResult(QueryResult result, int displayRowsPerPage) {
+    public TabularResult(QueryResult result, String displayRowsPerPage) {
       defaultRowsPerPage = displayRowsPerPage;
       queryId = result.getQueryId();
       final List<List<String>> rows = Lists.newArrayList();
@@ -163,10 +168,9 @@ public class QueryResources {
     }
 
     //Used by results.ftl to render default number of pages per row
-    public int getDefaultRowsPerPage() {
+    public String getDefaultRowsPerPage() {
       return defaultRowsPerPage;
     }
   }
-
 
 }
