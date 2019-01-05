@@ -227,7 +227,7 @@ public final class ExecConstants {
   //Control Web UI Resultset
   public static final String HTTP_WEB_CLIENT_RESULTSET_AUTOLIMIT_CHECKED = "drill.exec.http.web.client.resultset.autolimit.checked";
   public static final String HTTP_WEB_CLIENT_RESULTSET_AUTOLIMIT_ROWS = "drill.exec.http.web.client.resultset.autolimit.rows";
-  public static final String HTTP_WEB_CLIENT_RESULTSET_ROWS_PER_PAGE = "drill.exec.http.web.client.resultset.rowsPerPage";
+  public static final String HTTP_WEB_CLIENT_RESULTSET_ROWS_PER_PAGE_VALUES = "drill.exec.http.web.client.resultset.rowsPerPageValues";
   //Customize filters in options
   public static final String HTTP_WEB_OPTIONS_FILTERS = "drill.exec.http.web.options.filters";
   public static final String SYS_STORE_PROVIDER_CLASS = "drill.exec.sys.store.provider.class";

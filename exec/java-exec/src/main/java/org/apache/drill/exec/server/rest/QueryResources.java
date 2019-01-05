@@ -87,7 +87,7 @@ public class QueryResources {
     try {
       final String trimmedQueryString = CharMatcher.is(';').trimTrailingFrom(query.trim());
       final QueryResult result = submitQueryJSON(new QueryWrapper(trimmedQueryString, queryType));
-      List<Integer> rowsPerPageOptions = work.getContext().getConfig().getIntList(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_ROWS_PER_PAGE);
+      List<Integer> rowsPerPageOptions = work.getContext().getConfig().getIntList(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_ROWS_PER_PAGE_VALUES);
       Collections.sort(rowsPerPageOptions);
       final String displayRowsPerPage = Joiner.on(",").join(rowsPerPageOptions);
       return ViewableWithPermissions.create(authEnabled.get(), "/rest/query/result.ftl", sc, new TabularResult(result, displayRowsPerPage));
