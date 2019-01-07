@@ -87,10 +87,10 @@ public class QueryResources {
     try {
       final String trimmedQueryString = CharMatcher.is(';').trimTrailingFrom(query.trim());
       final QueryResult result = submitQueryJSON(new QueryWrapper(trimmedQueryString, queryType));
-      List<Integer> rowsPerPageOptions = work.getContext().getConfig().getIntList(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_ROWS_PER_PAGE_VALUES);
-      Collections.sort(rowsPerPageOptions);
-      final String displayRowsPerPage = Joiner.on(",").join(rowsPerPageOptions);
-      return ViewableWithPermissions.create(authEnabled.get(), "/rest/query/result.ftl", sc, new TabularResult(result, displayRowsPerPage));
+      List<Integer> rowsPerPageValues = work.getContext().getConfig().getIntList(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_ROWS_PER_PAGE_VALUES);
+      Collections.sort(rowsPerPageValues);
+      final String rowsPerPageValuesAsStr = Joiner.on(",").join(rowsPerPageValues);
+      return ViewableWithPermissions.create(authEnabled.get(), "/rest/query/result.ftl", sc, new TabularResult(result, rowsPerPageValuesAsStr));
     } catch (Exception | Error e) {
       logger.error("Query from Web UI Failed", e);
       return ViewableWithPermissions.create(authEnabled.get(), "/rest/query/errorMessage.ftl", sc, e);
@@ -133,10 +133,10 @@ public class QueryResources {
     private final List<String> columns;
     private final List<List<String>> rows;
     private final String queryId;
-    private final String defaultRowsPerPage;
+    private final String rowsPerPageValues;
 
-    public TabularResult(QueryResult result, String displayRowsPerPage) {
-      defaultRowsPerPage = displayRowsPerPage;
+    public TabularResult(QueryResult result, String rowsPerPageValuesAsStr) {
+      rowsPerPageValues = rowsPerPageValuesAsStr;
       queryId = result.getQueryId();
       final List<List<String>> rows = Lists.newArrayList();
       for (Map<String, String> rowMap:result.rows) {
@@ -168,8 +168,8 @@ public class QueryResources {
     }
 
     //Used by results.ftl to render default number of pages per row
-    public String getDefaultRowsPerPage() {
-      return defaultRowsPerPage;
+    public String getRowsPerPageValues() {
+      return rowsPerPageValues;
     }
   }
 
