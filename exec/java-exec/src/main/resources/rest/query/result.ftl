@@ -44,7 +44,7 @@
           <span class="label label-danger">
           <#break>
         <#default>
-          <span class="label label-DEFAULT">
+          <span class="label label-default">
       </#switch>${model.getQueryState()}</span>&nbsp;&nbsp;&nbsp;<span class="glyphicon glyphicon-new-window"/></button>
      </td>
      <td align="right" width="100%">
