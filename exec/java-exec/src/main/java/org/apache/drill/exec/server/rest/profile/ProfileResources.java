@@ -55,6 +55,7 @@ import org.apache.drill.exec.server.rest.ViewableWithPermissions;
 import org.apache.drill.exec.server.rest.auth.DrillUserPrincipal;
 import org.apache.drill.exec.store.sys.PersistentStore;
 import org.apache.drill.exec.store.sys.PersistentStoreProvider;
+import org.apache.drill.exec.store.sys.store.LocalPersistentStore;
 import org.apache.drill.exec.work.WorkManager;
 import org.apache.drill.exec.work.foreman.Foreman;
 import org.glassfish.jersey.server.mvc.Viewable;
@@ -352,10 +353,22 @@ public class ProfileResources {
     // then check blob store
     try {
       final PersistentStore<QueryProfile> profiles = work.getContext().getProfileStoreContext().getCompletedProfileStore();
+      //Check if archived
       final QueryProfile queryProfile = profiles.get(queryId);
       if (queryProfile != null) {
         checkOrThrowProfileViewAuthorization(queryProfile);
         return queryProfile;
+      }
+
+      //TODO: Check if recursive search within archives is required
+      logger.info("Checking recursively in archives? " + (profiles instanceof LocalPersistentStore<?>));
+      if (profiles instanceof LocalPersistentStore<?>) {
+        LocalPersistentStore<QueryProfile> localProfiles = (LocalPersistentStore<QueryProfile>) profiles;
+        final QueryProfile archivedQueryProfile = localProfiles.get(queryId, true);
+        if (archivedQueryProfile != null) {
+          checkOrThrowProfileViewAuthorization(archivedQueryProfile);
+          return archivedQueryProfile;
+        }
       }
     } catch (final Exception e) {
       throw new DrillRuntimeException("error while retrieving profile", e);

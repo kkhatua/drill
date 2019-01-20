@@ -23,8 +23,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -37,11 +39,14 @@ import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.time.DateUtils;
 import org.apache.drill.common.AutoCloseables.Closeable;
 import org.apache.drill.common.collections.ImmutableEntry;
 import org.apache.drill.common.concurrent.AutoCloseableLock;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.exec.ExecConstants;
+import org.apache.drill.exec.proto.UserBitShared.QueryId;
+import org.apache.drill.exec.proto.helper.QueryIdHelper;
 import org.apache.drill.exec.store.dfs.DrillFileSystem;
 import org.apache.drill.exec.store.sys.BasePersistentStore;
 import org.apache.drill.exec.store.sys.PersistentStoreConfig;
@@ -76,10 +81,10 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
   private Function<String, Entry<String, V>> stringTransformer;
   private Function<FileStatus, Entry<String, V>> fileStatusTransformer;
 
-  private LocalPersistentStoreArchiver archiver;
+  private LocalPersistentStoreArchiver<V> archiver;
   private ProfileSet profilesSet;
   private PathFilter sysFileSuffixFilter;
-//  private String mostRecentProfile;
+  //  private String mostRecentProfile;
   private long basePathLastModified;
   private long lastKnownFileCount;
   private int maxSetCapacity;
@@ -109,7 +114,7 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
     this.enableArchiving = drillConfig.getBoolean(ExecConstants.PROFILES_STORE_ARCHIVE_ENABLED);
     if (enableArchiving == true ) {
       try {
-        this.archiver = new LocalPersistentStoreArchiver(fs, basePath, drillConfig);
+        this.archiver = new LocalPersistentStoreArchiver<V>(fs, basePath, drillConfig, this);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -189,33 +194,33 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
   //Get an iterator based on the current state of the contents on the FileSystem
   @Override
   public Iterator<Map.Entry<String, V>> getRange(int skip, int take) {
-      try {
-        //Recursively look for files (can't apply filename filters, or else sub-directories get excluded)
-        List<FileStatus> fileStatuses = DrillFileSystemUtil.listFiles(fs, basePath, true);
-        if (fileStatuses.isEmpty()) {
-          return Collections.emptyIterator();
-        }
-
-        List<FileStatus> files = Lists.newArrayList();
-        for (FileStatus fileStatus : fileStatuses) {
-          if (fileStatus.getPath().getName().endsWith(DRILL_SYS_FILE_SUFFIX)) {
-            files.add(fileStatus);
-          }
-        }
-
-        //Sort files
-        List<FileStatus> sortedFiles = files.stream().sorted(
-            new Comparator<FileStatus>() {
-          @Override
-          public int compare(FileStatus fs1, FileStatus fs2) {
-            return fs1.getPath().getName().compareTo(fs2.getPath().getName());
-          }
-        }).collect(Collectors.toList());
-
-        return Iterables.transform(Iterables.limit(Iterables.skip(sortedFiles, skip), take), fileStatusTransformer).iterator();
-      } catch (IOException e) {
-        throw new RuntimeException(e);
+    try {
+      //Recursively look for files (can't apply filename filters, or else sub-directories get excluded)
+      List<FileStatus> fileStatuses = DrillFileSystemUtil.listFiles(fs, basePath, true);
+      if (fileStatuses.isEmpty()) {
+        return Collections.emptyIterator();
       }
+
+      List<FileStatus> files = Lists.newArrayList(); //TODO switch to regular ArrayList
+      for (FileStatus fileStatus : fileStatuses) {
+        if (fileStatus.getPath().getName().endsWith(DRILL_SYS_FILE_SUFFIX)) {
+          files.add(fileStatus);
+        }
+      }
+
+      //Sort files
+      List<FileStatus> sortedFiles = files.stream().sorted(
+          new Comparator<FileStatus>() {
+            @Override
+            public int compare(FileStatus fs1, FileStatus fs2) {
+              return fs1.getPath().getName().compareTo(fs2.getPath().getName());
+            }
+          }).collect(Collectors.toList());
+
+      return Iterables.transform(Iterables.limit(Iterables.skip(sortedFiles, skip), take), fileStatusTransformer).iterator();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /**
@@ -317,11 +322,15 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
   }
 
   private Path makePath(String name) {
+    return makePath(name, basePath);
+  }
+
+  private Path makePath(String name, Path parentPath) {
     Preconditions.checkArgument(
         !name.contains("/") &&
         !name.contains(":") &&
         !name.contains(".."));
-    return new Path(basePath, name + DRILL_SYS_FILE_SUFFIX);
+    return new Path(parentPath, name + DRILL_SYS_FILE_SUFFIX);
   }
 
   @Override
@@ -409,5 +418,114 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
 
   @Override
   public void close() {
+  }
+
+  /**
+   * Retrieve from archives
+   * @param queryIdString
+   * @param checkArchive
+   * @return
+   */
+  public V get(String queryIdString, boolean checkArchive) {
+    //FIXME
+    SimpleDateFormat sdf = archiver.getPigeonHoleFormat();
+
+    if (sdf == null) {
+      Path currPath = makePath(queryIdString, this.archiver.getArchivePath());
+      logger.info("Testing for path: {}", currPath);
+      try {
+        if (fs.exists(currPath)) {
+          logger.info("[AOK] Found match");
+          //TODO: Use GuavaCache and limit to about 20
+          return deserialize(currPath);
+        } else {
+          logger.info("[Ugh] Not Found");
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+
+      //i.e. Not found
+      return null;
+    }
+
+    //Will explore indexed archives
+    return retrieveFromIndexedArchives(sdf, queryIdString);
+  }
+
+  private V retrieveFromIndexedArchives(SimpleDateFormat indexDirFormat, String queryIdString) {
+    String dirPattern = indexDirFormat.toPattern();
+    QueryId queryId = QueryIdHelper.getQueryIdFromString(queryIdString);
+    long lowerBoundTime = (Integer.MAX_VALUE - ((queryId.getPart1() + Integer.MIN_VALUE) >> 32)) * 1000; // +/- 1000 for border cases
+    long upperBoundTime = (Integer.MAX_VALUE - ((queryId.getPart1() + Integer.MAX_VALUE) >> 32)) * 1000; // +/- 1000 for border cases
+    Date lowerBoundDate = new Date(lowerBoundTime);
+    logger.info("Inferred LowerBound Time is {} . Look from {}", lowerBoundDate, indexDirFormat.format(lowerBoundDate));
+    Date upperBoundDate = new Date(upperBoundTime);
+    logger.info("Inferred UpperBound Time is {} . Look until {}", upperBoundDate, indexDirFormat.format(upperBoundDate));
+
+
+    IncrementType incrementType = null; //ENUM?
+    if (dirPattern.contains("d")) {
+      incrementType = IncrementType.Day;
+    } else if (dirPattern.contains("M")) {
+      incrementType = IncrementType.Month;
+    } if (dirPattern.contains("y")) {
+      incrementType = IncrementType.Year;
+    } else {
+      return null; // Unknown pattern
+    }
+
+    Date currDate = lowerBoundDate;
+    int counter = 0;
+    logger.info("currDate.after(upperBoundDate) : {}", currDate.after(upperBoundDate));
+    do {
+      //Test for profile
+      Path currPath = makePath(queryIdString, new Path(this.archiver.getArchivePath(), indexDirFormat.format(currDate)));
+      logger.info("Testing for path: {}", currPath);
+      try {
+        if (fs.exists(currPath)) {
+          logger.info("[AOK] Found match");
+          //TODO: Use GuavaCache and limit to about 20
+          return deserialize(currPath);
+        } else {
+          logger.info("[Ugh] Not Found");
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+
+      //Increment to next
+      switch (incrementType) {
+      case Day:
+        currDate = DateUtils.addDays(lowerBoundDate, ++counter);
+        break;
+
+      case Month:
+        currDate = DateUtils.addMonths(lowerBoundDate, ++counter);
+        break;
+
+      case Year:
+        currDate = DateUtils.addYears(lowerBoundDate, ++counter);
+        break;
+
+      default:
+        break;
+      }
+    } while (!currDate.after(upperBoundDate));
+
+
+    /*
+    // create a new queryid where the first four bytes are a growing time (each new value comes earlier in sequence).  Last 12 bytes are random.
+    final long time = (int) (System.currentTimeMillis()/1000);
+    final long p1 = ((Integer.MAX_VALUE - time) << 32) + r.nextInt();
+     */
+
+    //Nothing retrieved
+    return null;
+  }
+
+  //Enumerator
+  enum IncrementType {
+    Day, Month, Year;
   }
 }

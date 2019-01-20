@@ -20,22 +20,27 @@ package org.apache.drill.exec.store.sys.store;
 import static org.apache.drill.exec.ExecConstants.DRILL_SYS_FILE_SUFFIX;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.exec.ExecConstants;
+import org.apache.drill.exec.proto.UserBitShared.QueryProfile;
 import org.apache.drill.exec.store.dfs.DrillFileSystem;
 import org.apache.drill.exec.util.DrillFileSystemUtil;
+import org.apache.drill.shaded.guava.com.google.common.base.Stopwatch;
 import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.drill.shaded.guava.com.google.common.base.Stopwatch;
-
 /**
  * Archive profiles
+ * @param <V>
  */
-public class LocalPersistentStoreArchiver {
+public class LocalPersistentStoreArchiver<V> {
   private static final Logger logger = LoggerFactory.getLogger(LocalPersistentStoreArchiver.class);
 
   private static final String ARCHIVE_LOCATION = "archived";
@@ -47,8 +52,14 @@ public class LocalPersistentStoreArchiver {
   private int archivalThreshold;
   private int archivalRate;
   private Stopwatch archiveWatch;
+  //TODO: Make this one time
+  private LocalPersistentStore<V> store;
+  private boolean organizeIntoPigeonHoles;
+  private SimpleDateFormat pigeonHoleFormat;
+  private Map<String,Path> pigeonHoleMap;
 
-  public LocalPersistentStoreArchiver(DrillFileSystem fs, Path base, DrillConfig drillConfig) throws IOException {
+  public LocalPersistentStoreArchiver(DrillFileSystem fs, Path base, DrillConfig drillConfig, LocalPersistentStore<V> lpStore) throws IOException {
+    this.store = lpStore;
     this.fs = fs;
     this.basePath = base;
     this.archivalThreshold = drillConfig.getInt(ExecConstants.PROFILES_STORE_CAPACITY);
@@ -56,6 +67,12 @@ public class LocalPersistentStoreArchiver {
     this.pendingArchivalSet = new ProfileSet(archivalRate);
     this.archivePath = new Path(basePath, ARCHIVE_LOCATION);
     this.archiveWatch = Stopwatch.createUnstarted();
+    this.organizeIntoPigeonHoles = drillConfig.getBoolean(ExecConstants.PROFILES_STORE_ARCHIVE_ORGANIZE_ENABLED);
+    this.pigeonHoleFormat = null;
+    if (organizeIntoPigeonHoles) {
+      this.pigeonHoleFormat = new SimpleDateFormat(drillConfig.getString(ExecConstants.PROFILES_STORE_ARCHIVE_ORGANIZE_FORMAT));
+      this.pigeonHoleMap = new HashMap<>();
+    }
 
     try {
       if (!fs.exists(archivePath)) {
@@ -67,6 +84,10 @@ public class LocalPersistentStoreArchiver {
     }
   }
 
+  /**
+   *Initiates archiving
+   * @param profilesInStoreCount
+   */
   void archiveProfiles(int profilesInStoreCount) {
     if (profilesInStoreCount > archivalThreshold) {
       //We'll attempt to reduce to 90% of threshold, but in batches of archivalRate
@@ -77,13 +98,22 @@ public class LocalPersistentStoreArchiver {
       int archivedCount = 0;
       try {
         if (fs.isDirectory(archivePath)) {
+          //FIXME PigeonHoleFormat status?
+          logger.info("PigeonHoleFormat : {}", pigeonHoleFormat);
+          if (organizeIntoPigeonHoles) {
+            this.pigeonHoleMap.clear();
+          }
           archiveWatch.reset().start(); //Clocking
           while (!pendingArchivalSet.isEmpty()) {
-            String toArchive = pendingArchivalSet.removeOldest() + DRILL_SYS_FILE_SUFFIX;
-            boolean renameStatus = DrillFileSystemUtil.rename(fs, new Path(basePath, toArchive), new Path(archivePath, toArchive));
+            String queryIdAsString = pendingArchivalSet.removeOldest();
+            Path archiveDestPath = organizeIntoPigeonHoles ? extractPigeonHolePath(queryIdAsString) : archivePath;
+            String toArchive = queryIdAsString + DRILL_SYS_FILE_SUFFIX;
+            boolean renameStatus = DrillFileSystemUtil.rename(fs,
+                new Path(basePath, toArchive),
+                new Path(archiveDestPath, toArchive));
             if (!renameStatus) {
               //Stop attempting any more archiving since other StoreProviders might be archiving
-              logger.error("Move failed for {} from {} to {}", toArchive, basePath.toString(), archivePath.toString());
+              logger.error("Move failed for {} from {} to {}", toArchive, basePath.toString(), archiveDestPath.toString());
               logger.warn("Skip archiving under the assumption that another Drillbit is archiving");
               break;
             }
@@ -99,6 +129,40 @@ public class LocalPersistentStoreArchiver {
     }
     //Clean up
     clearPending();
+  }
+
+  //Extracts the time and applies for time format
+  @SuppressWarnings("unused")
+  private Path extractPigeonHolePath(String queryIdAsString)  {
+    V storeObj = store.get(queryIdAsString);
+    if (storeObj instanceof QueryProfile) { //We do extraction for Query Profiles ONLY
+      QueryProfile profile = (QueryProfile) storeObj;
+      String pigeonHole = pigeonHoleFormat.format(new Date(profile.getStart()));
+      Path archiveDestPath = new Path(archivePath, pigeonHole);
+      if (!pigeonHoleMap.containsKey(pigeonHole)) { //Saves calls to the FS
+        //Check if directory was created
+        try {
+          if (!fs.isDirectory(archiveDestPath)) {
+            //Create
+            boolean mkdirPigeonHoleStatus = fs.mkdirs(archiveDestPath);
+            logger.info("Tried to create {} with status={}", archiveDestPath, mkdirPigeonHoleStatus);
+            if (!mkdirPigeonHoleStatus) {
+              //TODO: Fix message... but dont fail
+              logger.warn("Failed to create pigeonhole. Writing at default");
+              return archivePath;
+            }
+          }
+          pigeonHoleMap.put(pigeonHole, archiveDestPath);
+          return archiveDestPath;
+        } catch (IOException e) {
+          logger.warn("Failed to create pigeonhole: {}", e.getMessage());
+        }
+      } else {
+        return pigeonHoleMap.get(pigeonHole);
+      }
+    }
+    //Empty
+    return archivePath;
   }
 
   /**
@@ -117,5 +181,12 @@ public class LocalPersistentStoreArchiver {
     return this.pendingArchivalSet.add(profileName, true);
   }
 
+  Path getArchivePath() {
+    return archivePath;
+  }
+
+  SimpleDateFormat getPigeonHoleFormat() {
+    return pigeonHoleFormat;
+  }
 
 }
