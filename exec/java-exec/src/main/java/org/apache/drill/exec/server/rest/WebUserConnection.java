@@ -68,6 +68,9 @@ public class WebUserConnection extends AbstractDisposableUserClientConnection im
 
   public final List<String> metadata = new ArrayList<>();
 
+  private Integer autoLimitRowCount = null;
+  private boolean isResultSetAutoLimited;
+
   WebUserConnection(WebSessionResources webSessionResources) {
     this.webSessionResources = webSessionResources;
   }
@@ -135,7 +138,14 @@ public class WebUserConnection extends AbstractDisposableUserClientConnection im
           metadata.add(dataType.toString());
         }
         ValueVectorElementFormatter formatter = new ValueVectorElementFormatter(webSessionResources.getSession().getOptions());
-        for (int i = 0; i < rows; ++i) {
+        int rowsToSend = isResultSetAutoLimited() ? Math.min(autoLimitRowCount, rows) : rows;
+        if (rowsToSend == autoLimitRowCount) {
+          isResultSetAutoLimited = true; //Since count(rows) == autoLimitRowCount; so that WebUI does show results as autolimited
+          logger.debug("ResultSet size will be automatically limited to {} rows", autoLimitRowCount);
+        } else {
+          isResultSetAutoLimited = false;
+        }
+        for (int i = 0; i < rowsToSend; ++i) {
           final Map<String, String> record = Maps.newHashMap();
           for (VectorWrapper<?> vw : loader) {
             final String field = vw.getValueVector().getMetadata().getNamePart().getName();
@@ -195,5 +205,22 @@ public class WebUserConnection extends AbstractDisposableUserClientConnection im
     public void cleanupSession() {
       webSessionResources.close();
     }
+  }
+
+  /**
+   * Sets an autolimit on the size of records to be sent back on the connection
+   * @param Max number of records to be sent back to WebServer
+   */
+  void autoLimitResultSet(Integer autoLimitSize) {
+    this.autoLimitRowCount = autoLimitSize;
+    this.isResultSetAutoLimited = (autoLimitRowCount != null);
+  }
+
+  /**
+   * Indicates if
+   * @return
+   */
+  boolean isResultSetAutoLimited() {
+    return this.isResultSetAutoLimited;
   }
 }

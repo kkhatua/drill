@@ -90,7 +90,11 @@
         "lengthMenu": [[${model.getRowsPerPageValues()},-1], [${model.getRowsPerPageValues()},"ALL"]],
         "lengthChange": true,
         "dom": '<"H"lCfr>t<"F"ip>',
-        "jQueryUI" : true
+        "jQueryUI" : true,
+        "language": {
+              "infoEmpty": "No records to show <#if model.isLimitedResultSet()> [NOTE: Results have been auto-limited]</#if>",
+              "info": "Showing _START_ to _END_ of _TOTAL_ entries <#if model.isLimitedResultSet()>[<b>NOTE:</b> Results have been auto-limited]</#if>"
+        }
       } );
     } );
 

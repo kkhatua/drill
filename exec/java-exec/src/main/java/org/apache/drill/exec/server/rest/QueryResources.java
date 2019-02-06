@@ -83,10 +83,12 @@ public class QueryResources {
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   @Produces(MediaType.TEXT_HTML)
   public Viewable submitQuery(@FormParam("query") String query,
-                              @FormParam("queryType") String queryType) throws Exception {
+                              @FormParam("queryType") String queryType,
+                              @FormParam("autoLimit") String autoLimit
+                              ) throws Exception {
     try {
       final String trimmedQueryString = CharMatcher.is(';').trimTrailingFrom(query.trim());
-      final QueryResult result = submitQueryJSON(new QueryWrapper(trimmedQueryString, queryType));
+      final QueryResult result = submitQueryJSON(new QueryWrapper(trimmedQueryString, queryType, autoLimit));
       List<Integer> rowsPerPageValues = work.getContext().getConfig().getIntList(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_ROWS_PER_PAGE_VALUES);
       Collections.sort(rowsPerPageValues);
       final String rowsPerPageValuesAsStr = Joiner.on(",").join(rowsPerPageValues);
@@ -117,10 +119,18 @@ public class QueryResources {
       return onlyImpersonationEnabled;
     }
 
+    /**
+     * Is size of resultset limited
+     * @return true if size is limited
+     */
     public boolean isAutoLimitEnabled() {
       return autoLimitEnabled;
     }
 
+    /**
+     * Size of resultset limited
+     * @return Max size of returned resultset
+     */
     public int getDefaultRowsAutoLimited() {
       return defaultRowsAutoLimited;
     }
@@ -135,6 +145,7 @@ public class QueryResources {
     private final String queryId;
     private final String rowsPerPageValues;
     private final String queryState;
+    private final boolean isLimitedResultSet;
 
     public TabularResult(QueryResult result, String rowsPerPageValuesAsStr) {
       rowsPerPageValues = rowsPerPageValuesAsStr;
@@ -151,6 +162,7 @@ public class QueryResources {
       this.columns = ImmutableList.copyOf(result.columns);
       this.rows = rows;
       this.queryState = result.queryState;
+      this.isLimitedResultSet = result.isResultSetAutoLimited;
     }
 
     public boolean isEmpty() {
@@ -176,6 +188,11 @@ public class QueryResources {
 
     public String getQueryState() {
       return queryState;
+    }
+
+    //Used by results.ftl to indicate autoLimited resultset
+    public boolean isLimitedResultSet() {
+      return isLimitedResultSet;
     }
   }
 

@@ -162,21 +162,37 @@
               </label>
             </div>
             </div>
-            <button class="btn btn-default" type="button" onclick="<#if model.isOnlyImpersonationEnabled()>doSubmitQueryWithUserName()<#else>submitQuery()</#if>">
+            <div>
+              <button class="btn btn-default" type="button" id="rerunButton" onclick="<#if model.isOnlyImpersonationEnabled()>doSubmitQueryWithUserName()<#else>doSubmitQueryWithAutoLimit()</#if>">
             Re-run query
-            </button>
+              </button>
+              <input type="checkbox" name="forceLimit" value="limit" <#if model.isAutoLimitEnabled()>checked</#if>> Limit results to <input type="text" id="autoLimit" name="autoLimit" min="0" value="${model.getDefaultRowsAutoLimited()?c}" size="6" pattern="[0-9]*"> rows <span class="glyphicon glyphicon-info-sign" title="Limits the number of records retrieved in the query. Ignored if query has a limit already" style="cursor:pointer"></span>
+            </div>
           </form>
-      </p>
-
-<#include "*/runningQuery.ftl">
-
-      <p>
+            <br>
+            <div id="userNameMissingError" style="cursor:help;display:none" class="panel panel-danger" title="Username is required since impersonation is enabled">
+              <div class="panel-heading">
+                <span class="glyphicon glyphicon-alert" style="font-size:125%"></span>
+                <b>ERROR:</b> Please provide a user name. The field cannot be empty
+                <button type="button" class="close" onclick="closeWarning('userNameMissingError')" style="font-size:180%">&times;</button>
+              </div>
+            </div>
+            <div id="invalidRowCountError" style="cursor:help; display:none" class="panel panel-danger" title="Number of rows to limit must not contain commas, etc">
+              <div class="panel-heading">
+                <span class="glyphicon glyphicon-alert" style="font-size:125%"></span>
+                <b>ERROR:</b> <span id="errValPosition" style="font-weight:bold;font-family: Courier,monospace;">[autoLimitValue]</span> is not a number. Please fill in a valid number.
+                <button type="button" class="close" onclick="closeWarning('invalidRowCountError')" style="font-size:180%">&times;</button>
+              </div>
+            </div>
       <form action="/profiles/cancel/${model.queryId}" method="GET">
         <div class="form-group">
           <button type="submit" class="btn btn-default">Cancel query</button>
         </div>
       </form>
         </p>
+
+		<#include "*/runningQuery.ftl">
+
     </div>
     <#if model.hasError()>
       <div id="query-error" class="tab-pane fade">
@@ -563,8 +579,13 @@
             .addEventListener('keydown', function(e) {
       if (!(e.keyCode == 13 && (e.metaKey || e.ctrlKey))) return;
       if (e.target.form) 
-        <#if model.isOnlyImpersonationEnabled()>doSubmitQueryWithUserName()<#else>submitQuery()</#if>;
+        <#if model.isOnlyImpersonationEnabled()>doSubmitQueryWithUserName()<#else>doSubmitQueryWithAutoLimit()</#if>;
     });
+
+    //Close Warning
+    function closeWarning(warningElemId) {
+        document.getElementById(warningElemId).style.display="none";
+    }
     </script>
 
 </#macro>

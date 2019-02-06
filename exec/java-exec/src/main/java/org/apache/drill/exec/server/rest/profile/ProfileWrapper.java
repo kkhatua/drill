@@ -64,6 +64,8 @@ public class ProfileWrapper {
   private final boolean onlyImpersonationEnabled;
   private Map<String, String> physicalOperatorMap;
   private final String noProgressWarningThreshold;
+  private final boolean autoLimitEnabled;
+  private final int defaultRowsAutoLimited;
 
   public ProfileWrapper(final QueryProfile profile, DrillConfig drillConfig) {
     this.profile = profile;
@@ -132,6 +134,10 @@ public class ProfileWrapper {
 
     this.onlyImpersonationEnabled = WebServer.isOnlyImpersonationEnabled(drillConfig);
     this.noProgressWarningThreshold = String.valueOf(drillConfig.getInt(ExecConstants.PROFILE_WARNING_PROGRESS_THRESHOLD));
+
+    //Enabling autoLimit (for WebUI resubmission of query)
+    this.autoLimitEnabled = drillConfig.getBoolean(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_AUTOLIMIT_CHECKED);
+    this.defaultRowsAutoLimited = drillConfig.getInt(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_AUTOLIMIT_ROWS);
   }
 
   private long tallyMajorFragmentCost(List<MajorFragmentProfile> majorFragments) {
@@ -354,6 +360,22 @@ public class ProfileWrapper {
    */
   public boolean isOnlyImpersonationEnabled() {
     return onlyImpersonationEnabled;
+  }
+
+  /**
+   * Is size of resultset limited
+   * @return true if size is limited
+   */
+  public boolean isAutoLimitEnabled() {
+    return autoLimitEnabled;
+  }
+
+  /**
+   * Size of resultset limited
+   * @return Max size of returned resultset
+   */
+  public int getDefaultRowsAutoLimited() {
+    return defaultRowsAutoLimited;
   }
 
   //Generates operator names inferred from physical plan
