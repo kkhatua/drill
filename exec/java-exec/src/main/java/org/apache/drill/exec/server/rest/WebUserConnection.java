@@ -71,8 +71,11 @@ public class WebUserConnection extends AbstractDisposableUserClientConnection im
   private Integer autoLimitRowCount = null;
   private boolean isResultSetAutoLimited;
 
+  private Integer availableReceiverCapacity;
+
   WebUserConnection(WebSessionResources webSessionResources) {
     this.webSessionResources = webSessionResources;
+    this.isResultSetAutoLimited = false;
   }
 
   @Override
@@ -97,6 +100,23 @@ public class WebUserConnection extends AbstractDisposableUserClientConnection im
 
     // Create a ByteBuf with all the data in it.
     final int rows = result.getHeader().getRowCount();
+    //Track number of rows dispatched via
+    int rowsToSend = rows;
+    if (autoLimitRowCount != null) {
+      if (availableReceiverCapacity == 0) {
+        isResultSetAutoLimited = true; //If there is no RxCapacity, rows will not be extracted from remaining incoming batches; so that WebUI does show results as autolimited
+
+//        webSessionResources.getAllocator().buffer(dataByteCount).release();
+//        listener.success(Acks.OK, null);
+//        return; //Do nothing. TODO: Do I need to do anything beyond release?
+      }
+      rowsToSend = Math.min(availableReceiverCapacity, rows);
+      if (0 < availableReceiverCapacity || availableReceiverCapacity >= rows) {
+        logger.info("Hit Limit {} :: Incoming {} :: Pending {}", autoLimitRowCount, rows, availableReceiverCapacity);
+      }
+      availableReceiverCapacity -= rowsToSend; //Decrement pending
+    }
+
     final BufferAllocator allocator = webSessionResources.getAllocator();
     final DrillBuf bufferWithData = allocator.buffer(dataByteCount);
     try {
@@ -138,13 +158,7 @@ public class WebUserConnection extends AbstractDisposableUserClientConnection im
           metadata.add(dataType.toString());
         }
         ValueVectorElementFormatter formatter = new ValueVectorElementFormatter(webSessionResources.getSession().getOptions());
-        int rowsToSend = isResultSetAutoLimited() ? Math.min(autoLimitRowCount, rows) : rows;
-        if (rowsToSend == autoLimitRowCount) {
-          isResultSetAutoLimited = true; //Since count(rows) == autoLimitRowCount; so that WebUI does show results as autolimited
-          logger.debug("ResultSet size will be automatically limited to {} rows", autoLimitRowCount);
-        } else {
-          isResultSetAutoLimited = false;
-        }
+
         for (int i = 0; i < rowsToSend; ++i) {
           final Map<String, String> record = Maps.newHashMap();
           for (VectorWrapper<?> vw : loader) {
@@ -213,7 +227,8 @@ public class WebUserConnection extends AbstractDisposableUserClientConnection im
    */
   void autoLimitResultSet(Integer autoLimitSize) {
     this.autoLimitRowCount = autoLimitSize;
-    this.isResultSetAutoLimited = (autoLimitRowCount != null);
+    //this.isResultSetAutoLimited = (autoLimitRowCount != null);
+    this.availableReceiverCapacity = autoLimitSize;
   }
 
   /**
