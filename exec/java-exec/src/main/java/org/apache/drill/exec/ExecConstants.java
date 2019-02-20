@@ -911,4 +911,11 @@ public final class ExecConstants {
       new OptionDescription("Controls whether to return result set for CREATE TABLE / VIEW / FUNCTION, DROP TABLE / VIEW / FUNCTION, " +
           "SET, USE, REFRESH METADATA TABLE queries. If set to false affected rows count will be returned instead and result set will be null. " +
           "Affects JDBC connections only. Default is true. (Drill 1.15+)"));
+
+  /**
+   * Options that have a JDBC Statement implementation already in place
+   */
+  public static final String QUERY_TIMEOUT = "exec.query.timeout";
+  public static final RangeLongValidator QUERY_TIMEOUT_VALIDATOR = new RangeLongValidator(QUERY_TIMEOUT, 0, Integer.MAX_VALUE,
+      new OptionDescription("[2DoDoc] Set a timeout for execution of the query (Drill 1.16+)"));
 }
