@@ -144,7 +144,7 @@ public class Foreman implements Runnable {
     this.closeFuture = initiatingClient.getChannelClosureFuture();
     closeFuture.addListener(closeListener);
 
-    this.queryContext = new QueryContext(connection.getSession(), drillbitContext, queryId);
+    this.queryContext = new QueryContext(connection.getSession(), drillbitContext, queryId, queryRequest.getAutolimitRowcount());
     this.queryManager = new QueryManager(queryId, queryRequest, drillbitContext.getStoreProvider(),
         drillbitContext.getClusterCoordinator(), this);
     this.queryRM = drillbitContext.getResourceManager().newQueryRM(this);

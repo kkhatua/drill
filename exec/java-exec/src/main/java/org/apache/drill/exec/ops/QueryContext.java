@@ -76,6 +76,7 @@ public class QueryContext implements AutoCloseable, OptimizerRulesContext, Schem
   private final SchemaTreeProvider schemaTreeProvider;
   /** Stores constants and their holders by type */
   private final Map<String, Map<MinorType, ValueHolder>> constantValueHolderCache;
+  private Integer autoLimitRowCount;
 
   /*
    * Flag to indicate if close has been called, after calling close the first
@@ -84,9 +85,14 @@ public class QueryContext implements AutoCloseable, OptimizerRulesContext, Schem
   private boolean closed = false;
   private DrillOperatorTable table;
 
-  public QueryContext(final UserSession session, final DrillbitContext drillbitContext, QueryId queryId) {
+  public QueryContext(final UserSession session, final DrillbitContext drillbitContext, final QueryId queryId) {
+    this(session, drillbitContext, queryId, null);
+  }
+
+  public QueryContext(final UserSession session, final DrillbitContext drillbitContext, final QueryId queryId, final Integer autoLimitRowCount) {
     this.drillbitContext = drillbitContext;
     this.session = session;
+    this.autoLimitRowCount = autoLimitRowCount;
     this.queryId = queryId;
     queryOptions = new QueryOptionManager(session.getOptions());
     executionControls = new ExecutionControls(queryOptions, drillbitContext.getEndpoint());
@@ -271,6 +277,29 @@ public class QueryContext implements AutoCloseable, OptimizerRulesContext, Schem
 
   public RemoteFunctionRegistry getRemoteFunctionRegistry() {
     return drillbitContext.getRemoteFunctionRegistry();
+  }
+
+  /**
+   * Check if auto-limiting of resultset is enabled
+   * @return True if auto-limit is enabled
+   */
+  public boolean isAutoLimitEnabled() {
+    return autoLimitRowCount != null && autoLimitRowCount > 0;
+  }
+
+  /**
+   * Returns the maximum size of auto-limited resultset
+   * @return Maximum size of auto-limited resultSet
+   */
+  public Integer getAutoLimitRowCount() {
+    return autoLimitRowCount;
+  }
+
+  /**
+   * Allows to disable autolimit in case it is not applicable
+   */
+  public void disableAutoLimit() {
+    autoLimitRowCount = null;
   }
 
   @Override
