@@ -48,11 +48,14 @@ import org.apache.drill.exec.server.options.OptionDefinition;
 import org.apache.drill.exec.server.options.OptionValue;
 import org.apache.drill.exec.server.options.OptionValue.OptionScope;
 import org.apache.drill.exec.server.options.SystemOptionManager;
+import org.apache.drill.exec.server.profile.ProfileManager;
 import org.apache.drill.exec.server.rest.WebServer;
 import org.apache.drill.exec.service.ServiceEngine;
 import org.apache.drill.exec.store.StoragePluginRegistry;
+import org.apache.drill.exec.store.sys.store.LocalPersistentStore;
 import org.apache.drill.exec.store.sys.store.provider.CachingPersistentStoreProvider;
 import org.apache.drill.exec.store.sys.store.provider.InMemoryStoreProvider;
+import org.apache.drill.exec.store.sys.PersistentStore;
 import org.apache.drill.exec.store.sys.PersistentStoreProvider;
 import org.apache.drill.exec.store.sys.PersistentStoreRegistry;
 import org.apache.drill.exec.store.sys.store.provider.LocalPersistentStoreProvider;
@@ -61,6 +64,7 @@ import org.apache.drill.exec.work.WorkManager;
 import org.apache.zookeeper.Environment;
 
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint.State;
+import org.apache.drill.exec.proto.UserBitShared.QueryProfile;
 import org.apache.drill.shaded.guava.com.google.common.annotations.VisibleForTesting;
 import org.apache.drill.shaded.guava.com.google.common.base.Stopwatch;
 import org.slf4j.bridge.SLF4JBridgeHandler;
@@ -95,6 +99,7 @@ public class Drillbit implements AutoCloseable {
   private final BootStrapContext context;
   private final WebServer webServer;
   private final int gracePeriod;
+  private ProfileManager profileManager;
   private DrillbitStateManager stateManager;
   private boolean quiescentMode;
   private boolean forcefulShutdown = false;
@@ -226,6 +231,23 @@ public class Drillbit implements AutoCloseable {
     shutdownHook = new ShutdownThread(this, new StackTrace());
     Runtime.getRuntime().addShutdownHook(shutdownHook);
     gracefulShutdownThread.start();
+
+    //TODO: Janitor thread: Is Archiving enabled?
+    logger.info("profileStore :: {}", drillbitContext.getProfileStoreContext().getCompletedProfileStore());
+    logger.info("PROFILES_STORE_ARCHIVE_ENABLED? :: {}", context.getConfig().getBoolean(ExecConstants.PROFILES_STORE_ARCHIVE_ENABLED));
+    PersistentStore<QueryProfile> queryProfileStore = drillbitContext.getProfileStoreContext().getCompletedProfileStore();
+    if (queryProfileStore instanceof LocalPersistentStore
+        && context.getConfig().getBoolean(ExecConstants.PROFILES_STORE_ARCHIVE_ENABLED)) {
+      //TODO ProfileManagerContext
+
+      ProfileManagerContext profileManagerContext = new ProfileManagerContext(coord, drillbitContext);
+      profileManager = new ProfileManager(profileManagerContext);
+      profileManager.start();
+      logger.info("Started Profile Manager", profileManager);
+    } else {
+      profileManager = null;
+    }
+
     logger.info("Startup completed ({} ms).", w.elapsed(TimeUnit.MILLISECONDS));
   }
 
@@ -304,7 +326,8 @@ public class Drillbit implements AutoCloseable {
           coord,
           manager,
           storageRegistry,
-          context);
+          context,
+          profileManager);
 
       //Closing the profile store provider if distinct
       if (storeProvider != profileStoreProvider) {
@@ -388,7 +411,7 @@ public class Drillbit implements AutoCloseable {
     }
 
     /*
-     * Poll for the graceful file, if the file is found cloase the drillbit. In case if the DRILL_HOME path is not
+     * Poll for the graceful file, if the file is found close the drillbit. In case if the DRILL_HOME path is not
      * set, graceful shutdown will not be supported from the command line.
      */
     private void pollShutdown(Drillbit drillbit) throws IOException, InterruptedException {

@@ -58,6 +58,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.drill.shaded.guava.com.google.common.base.Stopwatch;
 import org.apache.drill.shaded.guava.com.google.common.cache.CacheBuilder;
 import org.apache.drill.shaded.guava.com.google.common.cache.CacheLoader;
+import org.apache.drill.shaded.guava.com.google.common.cache.CacheStats;
 import org.apache.drill.shaded.guava.com.google.common.cache.LoadingCache;
 import org.apache.drill.shaded.guava.com.google.common.base.Function;
 import org.apache.drill.shaded.guava.com.google.common.base.Preconditions;
@@ -74,6 +75,7 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
   private final Path basePath;
   private final PersistentStoreConfig<V> config;
   private final DrillFileSystem fs;
+  private int version = -1;
   private final AutoCloseableLock profileStoreLock;
   private Function<String, Entry<String, V>> stringTransformer;
   private Function<FileStatus, Entry<String, V>> fileStatusTransformer;
@@ -116,6 +118,7 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
       @Override
       public V load(String srcPathAsStr) {
         //Cache miss to force loading from FS
+        //logger.info("cacheMiss::fetchFromFS:: {}", srcPathAsStr);
         return deserializeFromFileSystem(srcPathAsStr);
       }
     };
@@ -153,13 +156,15 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
 
     //Base Dir
     try {
-      mkdirs(getBasePath());
+      if (!mkdirs(basePath)) {
+        version++;
+      }
     } catch (IOException e) {
       throw new RuntimeException("Failure setting pstore configuration path.");
     }
   }
 
-  protected Path getBasePath() {
+  public Path getBasePath() {
     return basePath;
   }
 
@@ -168,8 +173,8 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
     return PersistentStoreMode.PERSISTENT;
   }
 
-  private void mkdirs(Path path) throws IOException {
-    fs.mkdirs(path);
+  private boolean mkdirs(Path path) throws IOException {
+    return fs.mkdirs(path);
   }
 
   public static Path getLogDir() {
@@ -318,6 +323,10 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
   }
 
   private Path makePath(String name) {
+    return makePath(name, basePath);
+  }
+
+  private Path makePath(String name, Path parentPath) {
     Preconditions.checkArgument(
         !name.contains("/") &&
         !name.contains(":") &&
@@ -418,5 +427,133 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
 
   @Override
   public void close() {
+  }
+
+  /**
+   * Retrieve from archives via Cache
+   * @param queryIdString
+   * @param checkArchive
+   * @return
+   * TODO: Change signature and rename
+   */
+  public V getArchived(String queryIdString) {
+    CacheStats cacheStats = this.deserializedVCache.stats();
+    logger.info("Cache Stats: {}", cacheStats);
+
+    //Look into Cache
+    try {
+      String queryIdSrcPathAsStr = makePath(queryIdString, basePath /*shud be Archive*/).toString();
+      logger.info("Get from archive: {}", queryIdSrcPathAsStr);
+      return this.deserializedVCache.getUnchecked(queryIdSrcPathAsStr);
+    } catch (Exception e1) {
+      // TODO Auto-generated catch block
+      e1.printStackTrace();
+      //TODO throw e1?
+    }
+
+    //Return NULL
+    return null;
+  }
+
+  //TODO
+  private V retrieveFromArchives(String queryId) {
+    return null; //TODO:
+    //FIXME
+    //SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd");
+        //ExecConstants.PROFILES_STORE_ARCHIVE_ORGANIZE_FORMAT); //Reqd:: archiver.getPigeonHoleFormat();
+    /*FIXME
+    if (sdf == null) {
+      Path currPath = makePath(queryId, this.archiver.getArchivePath());
+      logger.info("Testing for path: {}", currPath);
+      try {
+        if (fs.exists(currPath)) {
+          logger.info("[AOK] Found match");
+          return deserialize(currPath);
+        } else {
+          logger.info("[Ugh] Not Found");
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+
+      //i.e. Not found
+      return null;
+    }
+    */
+    //Will explore indexed archives
+    //return retrieveFromIndexedArchives(sdf, queryId);
+  }
+
+  //Explore and find
+  //private V retrieveFromIndexedArchives(SimpleDateFormat indexDirFormat, String queryIdString) {
+  //  String dirPattern = indexDirFormat.toPattern();
+    /*Reqd::
+    QueryId queryId = QueryIdHelper.getQueryIdFromString(queryIdString);
+    long lowerBoundTime = (Integer.MAX_VALUE - ((queryId.getPart1() + Integer.MIN_VALUE) >> 32)) * 1000; // +/- 1000 for border cases
+    long upperBoundTime = (Integer.MAX_VALUE - ((queryId.getPart1() + Integer.MAX_VALUE) >> 32)) * 1000; // +/- 1000 for border cases
+    Date lowerBoundDate = new Date(lowerBoundTime);
+    logger.info("Inferred LowerBound Time is {} . Look from {}", lowerBoundDate, indexDirFormat.format(lowerBoundDate));
+    Date upperBoundDate = new Date(upperBoundTime);
+    logger.info("Inferred UpperBound Time is {} . Look until {}", upperBoundDate, indexDirFormat.format(upperBoundDate));
+
+    final IncrementType incrementType =
+        dirPattern.contains("d") ? IncrementType.Day :
+          dirPattern.contains("M") ? IncrementType.Month :
+            dirPattern.contains("y") ? IncrementType.Year : null;
+    if (incrementType == null) {
+      return null; // Unknown pattern
+    }
+
+    Date currDate = lowerBoundDate;
+    int counter = 0;
+    logger.info("currDate.after(upperBoundDate) : {}", currDate.after(upperBoundDate));
+    do {
+      //Test for profile
+      Path currPath = makePath(queryIdString, new Path(this.archiver.getArchivePath(), indexDirFormat.format(currDate)));
+      logger.info("Testing for path: {}", currPath);
+      try {
+        if (fs.exists(currPath)) {
+          logger.info("[aok] Found match");
+          return deserialize(currPath);
+        } else {
+          logger.info("[uGH] Not Found");
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+
+      //Increment to next
+      switch (incrementType) {
+      case Day:
+        currDate = DateUtils.addDays(lowerBoundDate, ++counter);
+        break;
+
+      case Month:
+        currDate = DateUtils.addMonths(lowerBoundDate, ++counter);
+        break;
+
+      case Year:
+        currDate = DateUtils.addYears(lowerBoundDate, ++counter);
+        break;
+
+      default:
+        break;
+      }
+    } while (!currDate.after(upperBoundDate));
+
+
+    /*
+    // create a new queryid where the first four bytes are a growing time (each new value comes earlier in sequence).  Last 12 bytes are random.
+    final long time = (int) (System.currentTimeMillis()/1000);
+    final long p1 = ((Integer.MAX_VALUE - time) << 32) + r.nextInt();
+     */
+
+    //Nothing retrieved
+//    return null;
+//  }
+
+  //Enumerator
+  enum IncrementType {
+    Day, Month, Year;
   }
 }
