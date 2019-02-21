@@ -361,7 +361,11 @@ public class DrillCursor implements Cursor {
             ExecConstants.JDBC_BATCH_QUEUE_THROTTLING_THRESHOLD );
     resultsListener = new ResultsListener(this, batchQueueThrottlingThreshold);
     currentBatchHolder = new RecordBatchLoader(client.getAllocator());
-    setTimeout(this.statement.getQueryTimeout());
+
+    //TODO: Set timeout based on Session Options
+    //Ref: org.apache.drill.exec.work.prepare.PreparedStatementProvider.PreparedStatementWorker.run().[final long timeoutMillis]
+    int sessionTimeout = Math.min(this.statement.getQueryTimeout(), /*ThisShouldBeSessionOptionBased*/this.statement.getQueryTimeout());
+    setTimeout(sessionTimeout);
   }
 
   protected int getCurrentRecordNumber() {
