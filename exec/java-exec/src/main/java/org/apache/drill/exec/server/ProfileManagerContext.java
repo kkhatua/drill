@@ -45,8 +45,6 @@ public class ProfileManagerContext {
   private LocalPersistentStore<QueryProfile> completedProfileStore;
   private int archivalThreshold;
   private int archivalRate;
-  //private boolean organizedIntoPigeonHoles;
-  //private SimpleDateFormat pigeonHoleFormat;
   private Path archivalPath;
   private long archivalInterval;
   private DrillFileSystem fs;
@@ -73,8 +71,6 @@ public class ProfileManagerContext {
     final int maxHttpProfiles = drillConfig.getInt(ExecConstants.HTTP_MAX_PROFILES);
     this.archivalThreshold = Math.max(maxHttpProfiles, drillConfig.getInt(ExecConstants.PROFILES_STORE_CAPACITY));
     this.archivalRate = drillConfig.getInt(ExecConstants.PROFILES_STORE_ARCHIVE_RATE);
-//    this.organizedIntoPigeonHoles = drillConfig.getBoolean(ExecConstants.PROFILES_STORE_ARCHIVE_ORGANIZE_ENABLED);
-//    this.pigeonHoleFormat = new SimpleDateFormat(drillConfig.getString(ExecConstants.PROFILES_STORE_ARCHIVE_ORGANIZE_FORMAT));
   }
 
   public DrillConfig getDrillConfig() {
@@ -112,14 +108,6 @@ public class ProfileManagerContext {
   public long getArchivalInterval() {
     return archivalInterval;
   }
-
-//public boolean isOrganizedIntoPigeonHoles() {
-//return organizedIntoPigeonHoles;
-//}
-//
-//public SimpleDateFormat getPigeonHoleFormat() {
-//return pigeonHoleFormat;
-//}
 
   private DrillFileSystem inferFileSystem(DrillConfig drillConfig) throws IOException {
     boolean hasZkBlobRoot = drillConfig.hasPath(ZookeeperPersistentStoreProvider.DRILL_EXEC_SYS_STORE_PROVIDER_ZK_BLOBROOT);

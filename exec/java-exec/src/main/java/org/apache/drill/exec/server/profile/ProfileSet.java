@@ -54,8 +54,8 @@ public class ProfileSet implements Iterable<String> {
 
   /**
    * Add a profile name to the set, while removing the oldest, if exceeding capacity
-   * @param profile
-   * @return oldest profile
+   * @param profile name
+   * @return oldest profile name
    */
   public String add(String profile) {
     return add(profile, false);
@@ -63,9 +63,9 @@ public class ProfileSet implements Iterable<String> {
 
   /**
    * Add a profile name to the set, while removing the oldest or youngest, based on flag
-   * @param profile
+   * @param profile name
    * @param retainOldest indicate retaining policy as oldest
-   * @return youngest/oldest profile
+   * @return youngest/oldest profile name
    */
   public String add(String profile, boolean retainOldest) {
     store.add(profile);
@@ -81,7 +81,7 @@ public class ProfileSet implements Iterable<String> {
 
   /**
    * Remove the oldest profile
-   * @return oldest profile
+   * @return oldest profile name
    */
   public String removeOldest() {
     size.decrementAndGet();
@@ -90,7 +90,7 @@ public class ProfileSet implements Iterable<String> {
 
   /**
    * Remove the youngest profile
-   * @return youngest profile
+   * @return youngest profile name
    */
   public String removeYoungest() {
     size.decrementAndGet();
@@ -99,7 +99,7 @@ public class ProfileSet implements Iterable<String> {
 
   /**
    * Retrieve the oldest profile without removal
-   * @return oldest profile
+   * @return oldest profile name
    */
   public String getOldest() {
     return store.last();
@@ -107,7 +107,7 @@ public class ProfileSet implements Iterable<String> {
 
   /**
    * Retrieve the youngest profile without removal
-   * @return youngest profile
+   * @return youngest profile name
    */
   public String getYoungest() {
     return store.first();
@@ -131,8 +131,8 @@ public class ProfileSet implements Iterable<String> {
 
   /**
    * Clear the set with the initial capacity
-   * @param capacity
-   * @param forceResize
+   * @param capacity Capacity to set
+   * @param forceResize force resize of max capacity
    */
   public void clear(int capacity, boolean forceResize) {
     clear();

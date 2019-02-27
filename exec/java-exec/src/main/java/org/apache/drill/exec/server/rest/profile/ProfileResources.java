@@ -60,7 +60,6 @@ import org.apache.drill.exec.work.WorkManager;
 import org.apache.drill.exec.work.foreman.Foreman;
 import org.glassfish.jersey.server.mvc.Viewable;
 import org.apache.drill.shaded.guava.com.google.common.base.Joiner;
-
 import org.apache.drill.shaded.guava.com.google.common.collect.Lists;
 
 @Path("/")
@@ -283,7 +282,7 @@ public class ProfileResources {
 
       final List<ProfileInfo> finishedQueries = new ArrayList<ProfileResources.ProfileInfo>(maxProfilesToLoad);
 
-      final Iterator<Map.Entry<String, QueryProfile>> range = completed.getRange(0, maxProfilesToLoad, true); //Leverage any underlying cache
+      final Iterator<Map.Entry<String, QueryProfile>> range = completed.getRange(0, maxProfilesToLoad, true); // Leverage any underlying cache
       while (range.hasNext()) {
         try {
           final Map.Entry<String, QueryProfile> profileEntry = range.next();
@@ -360,8 +359,7 @@ public class ProfileResources {
         return queryProfile;
       }
 
-      //TODO: Check if recursive search within archives is required
-      logger.info("Checking recursively in archives? " + (profiles instanceof LocalPersistentStore<?>));
+      //Check archive
       if (profiles instanceof LocalPersistentStore<?>) {
         LocalPersistentStore<QueryProfile> localProfiles = (LocalPersistentStore<QueryProfile>) profiles;
         long startOfFetch = System.currentTimeMillis();

@@ -90,8 +90,6 @@ public class Drillbit implements AutoCloseable {
 
   public final static String SYSTEM_OPTIONS_NAME = "org.apache.drill.exec.server.Drillbit.system_options";
 
-  private boolean isClosed = false;
-
   private final ClusterCoordinator coord;
   private final ServiceEngine engine;
   private final PersistentStoreProvider storeProvider;
@@ -232,14 +230,11 @@ public class Drillbit implements AutoCloseable {
     Runtime.getRuntime().addShutdownHook(shutdownHook);
     gracefulShutdownThread.start();
 
-    //TODO: Janitor thread: Is Archiving enabled?
-    logger.info("profileStore :: {}", drillbitContext.getProfileStoreContext().getCompletedProfileStore());
-    logger.info("PROFILES_STORE_ARCHIVE_ENABLED? :: {}", context.getConfig().getBoolean(ExecConstants.PROFILES_STORE_ARCHIVE_ENABLED));
+    // Create a ProfileManager thread that mostly sleeps
+    logger.info("Manage (completed) Profile Store? {}", context.getConfig().getBoolean(ExecConstants.PROFILES_STORE_ARCHIVE_ENABLED));
     PersistentStore<QueryProfile> queryProfileStore = drillbitContext.getProfileStoreContext().getCompletedProfileStore();
     if (queryProfileStore instanceof LocalPersistentStore
         && context.getConfig().getBoolean(ExecConstants.PROFILES_STORE_ARCHIVE_ENABLED)) {
-      //TODO ProfileManagerContext
-
       ProfileManagerContext profileManagerContext = new ProfileManagerContext(coord, drillbitContext);
       profileManager = new ProfileManager(profileManagerContext);
       profileManager.start();

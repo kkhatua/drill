@@ -22,14 +22,9 @@ import static org.apache.drill.exec.ExecConstants.DRILL_SYS_FILE_SUFFIX;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-//import java.text.SimpleDateFormat;
-//import java.util.Date;
-//import java.util.HashMap;
 import java.util.List;
-//import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-//import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.exec.coord.DistributedSemaphore;
 import org.apache.drill.exec.coord.DistributedSemaphore.DistributedLease;
 import org.apache.drill.exec.coord.zk.ZKClusterCoordinator;
@@ -53,7 +48,6 @@ import org.slf4j.LoggerFactory;
 public class ProfileManager extends Thread implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(ProfileManager.class);
-  //TODO
   private static final String lockPathString = "/profileManager";
   private static final String PROFILE_MANAGER_THREAD = "ProfileManager";
   private static final int DRILL_SYS_FILE_EXT_SIZE = DRILL_SYS_FILE_SUFFIX.length();
@@ -69,12 +63,6 @@ public class ProfileManager extends Thread implements AutoCloseable {
   private final int archivalRate;
   private final PathFilter sysFileSuffixFilter;
   private Stopwatch archiveWatch;
-  //TODO: Make this one time
-//  private boolean organizeIntoPigeonHoles;
-//  private SimpleDateFormat pigeonHoleFormat;
-//  private Map<String,Path> pigeonHoleMap;
-
-
 
   public ProfileManager(ProfileManagerContext profileManagerContext) throws StoreException, IOException {
     this.zkCoord = profileManagerContext.getZkCoord();
@@ -88,12 +76,6 @@ public class ProfileManager extends Thread implements AutoCloseable {
     this.interval = profileManagerContext.getArchivalInterval();
     this.archiveWatch = Stopwatch.createUnstarted();
     this.sysFileSuffixFilter = new DrillSysFilePathFilter();
-    //this.organizeIntoPigeonHoles = profileManagerContext.isOrganizedIntoPigeonHoles();
-//    this.pigeonHoleFormat = null;
-//    if (organizeIntoPigeonHoles) {
-//      this.pigeonHoleFormat = profileManagerContext.getPigeonHoleFormat();
-//      this.pigeonHoleMap = new HashMap<>();
-//    }
 
     try {
       if (!fs.exists(archivePath)) {
@@ -111,8 +93,7 @@ public class ProfileManager extends Thread implements AutoCloseable {
    * @param profilesInStoreCount
    */
   void archiveProfiles(int profilesInStoreCount) {
-
-    //We'll attempt to reduce to 90% of threshold, but in batches of archivalRate
+    // Will attempt to reduce to 90% of threshold, but in batches of archivalRate
     int excessCount = profilesInStoreCount - (int) Math.round(0.9*archivalThreshold);
     int numToArchive = Math.min(excessCount, archivalRate);
     logger.info("Found {} excess profiles. For now, will attempt archiving {} profiles to {}", excessCount,
@@ -120,24 +101,18 @@ public class ProfileManager extends Thread implements AutoCloseable {
     int archivedCount = 0;
     try {
       if (fs.isDirectory(archivePath)) {
-        //FIXME PigeonHoleFormat status?
-//        logger.info("PigeonHoleFormat : {}", pigeonHoleFormat);
-//        if (organizeIntoPigeonHoles) {
-//          this.pigeonHoleMap.clear();
-//        }
-        archiveWatch.reset().start(); //Clocking
+        archiveWatch.reset().start(); // Clocking
         while (!pendingArchival.isEmpty()) {
           String queryIdAsString = pendingArchival.removeOldest();
-          Path archiveDestPath = /*organizeIntoPigeonHoles ? extractPigeonHolePath(queryIdAsString) : */archivePath;
+          Path archiveDestPath = archivePath;
           String toArchive = queryIdAsString + DRILL_SYS_FILE_SUFFIX;
           boolean renameStatus = DrillFileSystemUtil.rename(fs,
               new Path(basePath, toArchive),
               new Path(archiveDestPath, toArchive));
           if (!renameStatus) {
-            //Stop attempting any more archiving since other StoreProviders might be archiving
+            // Stop attempting any more archiving since other StoreProviders might be archiving
             logger.error("Move failed for {} from {} to {}", toArchive, basePath.toString(), archiveDestPath.toString());
-            logger.warn("Skip archiving under the assumption that another Drillbit is archiving");
-            break;
+            continue;
           }
           archivedCount++;
         }
@@ -184,19 +159,15 @@ public class ProfileManager extends Thread implements AutoCloseable {
       e2.printStackTrace();
     }
 
-    while (/*temp++ < 10*/true) {
-      //logger.info("{} is simulating archiving by acquiring lock ", myName);
-
+    while (true) {
       /*
        * 1. Get lock
        * 2. Inspect files
        * 3. Archive some files
-       * 4. Update entry?
-       * 5. Close/release lock
+       * 4. Close/release lock
        * Ref: https://dzone.com/articles/distributed-lock-using
        */
 
-      //Pause:: logger.info("Pausing for {}", interval);
       try {
         Thread.sleep(TimeUnit.SECONDS.toMillis(interval));
       } catch (final InterruptedException e) {
@@ -211,10 +182,7 @@ public class ProfileManager extends Thread implements AutoCloseable {
       try {
         lease = managerMutex.acquire(0, TimeUnit.SECONDS);
         if (lease == null) {
-//          logger.info("Couldn't acquire lease");
           continue;
-//        } else {
-//          logger.info("Acquired Lease {}", lease);
         }
 
         int currentProfileCount = listForArchiving();
@@ -228,20 +196,20 @@ public class ProfileManager extends Thread implements AutoCloseable {
         clearPending();
         //Done archving
       } catch (Exception e) {
-        // TODO: handle exception
+        /*DoNothing*/
       } finally {
         if (lease != null) {
           try {
             lease.close();
           } catch (Exception e) {
-            // TODO Auto-generated catch block
+
             e.printStackTrace();
           }
         }
       }
     }
 
-    logger.info("=====End-Of-Day-s-Play=====");
+    logger.info("Profile Manager is shutting down");
   }
 
   //Shuts down the thread
@@ -250,10 +218,8 @@ public class ProfileManager extends Thread implements AutoCloseable {
     this.interrupt();
   }
 
-  //List all profiles in store's root and identify potential candidates for archiving
+  // List all profiles in store's root and identify potential candidates for archiving
   private int listForArchiving() throws IOException {
-//    logger.info("Listing on {}\t{}", fs.toString(), basePath);
-
     List<FileStatus> fileStatuses = DrillFileSystemUtil.listFiles(fs, basePath, false, //Not performing recursive search of profiles
         sysFileSuffixFilter /*TODO: Use MostRecentProfile */
         );
@@ -273,37 +239,4 @@ public class ProfileManager extends Thread implements AutoCloseable {
 
     return numProfilesInStore;
   }
-
-  /*
-  //Extracts the time and applies for time format
-  @SuppressWarnings("unused")
-  private Path extractPigeonHolePath(String queryIdAsString)  {
-    QueryProfile profile = store.get(queryIdAsString);
-    String pigeonHole = pigeonHoleFormat.format(new Date(profile.getStart()));
-    Path archiveDestPath = new Path(archivePath, pigeonHole);
-    if (!pigeonHoleMap.containsKey(pigeonHole)) { //Saves calls to the FS
-      //Check if directory was created
-      try {
-        if (!fs.isDirectory(archiveDestPath)) {
-          //Create
-          boolean mkdirPigeonHoleStatus = fs.mkdirs(archiveDestPath);
-          logger.info("Tried to create {} with status={}", archiveDestPath, mkdirPigeonHoleStatus);
-          if (!mkdirPigeonHoleStatus) {
-            //TODO: Fix message... but dont fail
-            logger.warn("Failed to create pigeonhole. Writing at default");
-            return archivePath;
-          }
-        }
-        pigeonHoleMap.put(pigeonHole, archiveDestPath);
-        return archiveDestPath;
-      } catch (IOException e) {
-        logger.warn("Failed to create pigeonhole: {}", e.getMessage());
-      }
-    } else {
-      return pigeonHoleMap.get(pigeonHole);
-    }
-    //Empty
-    return archivePath;
-  }
-*/
 }

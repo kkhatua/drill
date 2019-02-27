@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -63,7 +64,6 @@ import org.apache.drill.shaded.guava.com.google.common.cache.LoadingCache;
 import org.apache.drill.shaded.guava.com.google.common.base.Function;
 import org.apache.drill.shaded.guava.com.google.common.base.Preconditions;
 import org.apache.drill.shaded.guava.com.google.common.collect.Iterables;
-import org.apache.drill.shaded.guava.com.google.common.collect.Lists;
 
 public class LocalPersistentStore<V> extends BasePersistentStore<V> {
   private static final Logger logger = LoggerFactory.getLogger(LocalPersistentStore.class);
@@ -211,7 +211,7 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
         return Collections.emptyIterator();
       }
 
-      List<FileStatus> files = Lists.newArrayList(); //TODO switch to regular ArrayList
+      List<FileStatus> files = new ArrayList<FileStatus>();
       for (FileStatus fileStatus : fileStatuses) {
         if (fileStatus.getPath().getName().endsWith(DRILL_SYS_FILE_SUFFIX)) {
           files.add(fileStatus);
@@ -272,7 +272,6 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
           //Mark Start Time
           listAndBuildWatch.reset().start();
 
-          //[2Do]
           //Listing ALL DrillSysFiles
           //Can apply MostRecentProfile name as filter. Unfortunately, Hadoop (2.7.1) currently doesn't leverage this to speed up
           List<FileStatus> fileStatuses = DrillFileSystemUtil.listFiles(fs, basePath, false, //Not performing recursive search of profiles
@@ -367,7 +366,7 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    V payload = deserializedVCache.getUnchecked(path.toString());//deserialize(path.toString());
+    V payload = deserializedVCache.getUnchecked(path.toString());
     //logger.info("postGetString[{}] :: {}", path, deserializedProfileCache.stats().toString());
     return payload;
   }
@@ -384,7 +383,7 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    V payload = deserializedVCache.getUnchecked(path.toString());//deserialize(path.toString());
+    V payload = deserializedVCache.getUnchecked(path.toString());
     //logger.info("postGetFileStatus[{}] :: {}", path, deserializedProfileCache.stats().toString());
     return payload;
   }
@@ -445,115 +444,12 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
       String queryIdSrcPathAsStr = makePath(queryIdString, basePath /*shud be Archive*/).toString();
       logger.info("Get from archive: {}", queryIdSrcPathAsStr);
       return this.deserializedVCache.getUnchecked(queryIdSrcPathAsStr);
-    } catch (Exception e1) {
-      // TODO Auto-generated catch block
-      e1.printStackTrace();
-      //TODO throw e1?
+    } catch (Exception e) {
+      e.printStackTrace();
     }
 
     //Return NULL
     return null;
   }
 
-  //TODO
-  private V retrieveFromArchives(String queryId) {
-    return null; //TODO:
-    //FIXME
-    //SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd");
-        //ExecConstants.PROFILES_STORE_ARCHIVE_ORGANIZE_FORMAT); //Reqd:: archiver.getPigeonHoleFormat();
-    /*FIXME
-    if (sdf == null) {
-      Path currPath = makePath(queryId, this.archiver.getArchivePath());
-      logger.info("Testing for path: {}", currPath);
-      try {
-        if (fs.exists(currPath)) {
-          logger.info("[AOK] Found match");
-          return deserialize(currPath);
-        } else {
-          logger.info("[Ugh] Not Found");
-        }
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-
-      //i.e. Not found
-      return null;
-    }
-    */
-    //Will explore indexed archives
-    //return retrieveFromIndexedArchives(sdf, queryId);
-  }
-
-  //Explore and find
-  //private V retrieveFromIndexedArchives(SimpleDateFormat indexDirFormat, String queryIdString) {
-  //  String dirPattern = indexDirFormat.toPattern();
-    /*Reqd::
-    QueryId queryId = QueryIdHelper.getQueryIdFromString(queryIdString);
-    long lowerBoundTime = (Integer.MAX_VALUE - ((queryId.getPart1() + Integer.MIN_VALUE) >> 32)) * 1000; // +/- 1000 for border cases
-    long upperBoundTime = (Integer.MAX_VALUE - ((queryId.getPart1() + Integer.MAX_VALUE) >> 32)) * 1000; // +/- 1000 for border cases
-    Date lowerBoundDate = new Date(lowerBoundTime);
-    logger.info("Inferred LowerBound Time is {} . Look from {}", lowerBoundDate, indexDirFormat.format(lowerBoundDate));
-    Date upperBoundDate = new Date(upperBoundTime);
-    logger.info("Inferred UpperBound Time is {} . Look until {}", upperBoundDate, indexDirFormat.format(upperBoundDate));
-
-    final IncrementType incrementType =
-        dirPattern.contains("d") ? IncrementType.Day :
-          dirPattern.contains("M") ? IncrementType.Month :
-            dirPattern.contains("y") ? IncrementType.Year : null;
-    if (incrementType == null) {
-      return null; // Unknown pattern
-    }
-
-    Date currDate = lowerBoundDate;
-    int counter = 0;
-    logger.info("currDate.after(upperBoundDate) : {}", currDate.after(upperBoundDate));
-    do {
-      //Test for profile
-      Path currPath = makePath(queryIdString, new Path(this.archiver.getArchivePath(), indexDirFormat.format(currDate)));
-      logger.info("Testing for path: {}", currPath);
-      try {
-        if (fs.exists(currPath)) {
-          logger.info("[aok] Found match");
-          return deserialize(currPath);
-        } else {
-          logger.info("[uGH] Not Found");
-        }
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-
-      //Increment to next
-      switch (incrementType) {
-      case Day:
-        currDate = DateUtils.addDays(lowerBoundDate, ++counter);
-        break;
-
-      case Month:
-        currDate = DateUtils.addMonths(lowerBoundDate, ++counter);
-        break;
-
-      case Year:
-        currDate = DateUtils.addYears(lowerBoundDate, ++counter);
-        break;
-
-      default:
-        break;
-      }
-    } while (!currDate.after(upperBoundDate));
-
-
-    /*
-    // create a new queryid where the first four bytes are a growing time (each new value comes earlier in sequence).  Last 12 bytes are random.
-    final long time = (int) (System.currentTimeMillis()/1000);
-    final long p1 = ((Integer.MAX_VALUE - time) << 32) + r.nextInt();
-     */
-
-    //Nothing retrieved
-//    return null;
-//  }
-
-  //Enumerator
-  enum IncrementType {
-    Day, Month, Year;
-  }
 }
