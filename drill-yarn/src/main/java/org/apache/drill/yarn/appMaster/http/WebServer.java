@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Set;
 
+import javax.servlet.ServletRequest;
 import javax.servlet.http.HttpSession;
 import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionListener;
@@ -249,7 +250,7 @@ public class WebServer implements AutoCloseable {
     }
 
     @Override
-    public UserIdentity login(String username, Object credentials) {
+    public UserIdentity login(String username, Object credentials, ServletRequest request) {
       if (!securityMgr.login(username, (String) credentials)) {
         return null;
       }
