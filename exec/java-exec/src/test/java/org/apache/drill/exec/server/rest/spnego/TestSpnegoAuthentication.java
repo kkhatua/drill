@@ -305,7 +305,7 @@ public class TestSpnegoAuthentication {
     final DrillSpnegoLoginService loginService = new DrillSpnegoLoginService(drillbitContext);
 
     // Authenticate the client using its SPNEGO token
-    final UserIdentity user = loginService.login(null, token);
+    final UserIdentity user = loginService.login(null, token, null);
 
     // Validate the UserIdentity of authenticated client
     assertTrue(user != null);

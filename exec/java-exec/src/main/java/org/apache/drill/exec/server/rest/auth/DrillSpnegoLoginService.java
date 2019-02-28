@@ -37,6 +37,8 @@ import org.ietf.jgss.GSSName;
 import org.ietf.jgss.Oid;
 
 import javax.security.auth.Subject;
+import javax.servlet.ServletRequest;
+
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.security.Principal;
@@ -78,8 +80,9 @@ public class DrillSpnegoLoginService extends SpnegoLoginService {
   }
 
   @Override
-  public UserIdentity login(final String username, final Object credentials) {
-
+  public UserIdentity login(final String username, final Object credentials, final ServletRequest request) {
+    //TODO
+    //request??
     UserIdentity identity = null;
     try {
       identity = loggedInUgi.doAs(new PrivilegedExceptionAction<UserIdentity>() {

@@ -57,9 +57,10 @@ import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.SessionManager;
 import org.eclipse.jetty.server.SslConnectionFactory;
 import org.eclipse.jetty.server.handler.ErrorHandler;
-//import org.eclipse.jetty.server.session.HashSessionManager;
+import org.eclipse.jetty.server.session.HashSessionManager;
 import org.eclipse.jetty.server.session.SessionHandler;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.FilterHolder;
@@ -284,15 +285,14 @@ public class WebServer implements AutoCloseable {
   }
 
   /**
-   * @return A {@link SessionHandler} which contains a TODO {@link HashSessionManager}
+   * @return A {@link SessionHandler} which contains a {@link HashSessionManager}
    */
   private SessionHandler createSessionHandler(final SecurityHandler securityHandler) {
-    //TODO HashSession[Id]Manager ?
-    SessionHandler sessionHandler = new SessionHandler();
-    sessionHandler.setMaxInactiveInterval(config.getInt(ExecConstants.HTTP_SESSION_MAX_IDLE_SECS));
+    SessionManager sessionManager = new HashSessionManager();
+    sessionManager.setMaxInactiveInterval(config.getInt(ExecConstants.HTTP_SESSION_MAX_IDLE_SECS));
     // response cookie will be returned with HttpOnly flag
-    sessionHandler.getSessionCookieConfig().setHttpOnly(true);
-    sessionHandler.addEventListener(new HttpSessionListener() {
+    sessionManager.getSessionCookieConfig().setHttpOnly(true);
+    sessionManager.addEventListener(new HttpSessionListener() {
       @Override
       public void sessionCreated(HttpSessionEvent se) {
 
@@ -324,7 +324,7 @@ public class WebServer implements AutoCloseable {
       }
     });
 
-    return sessionHandler;
+    return new SessionHandler(sessionManager);
   }
 
   public int getPort() {
