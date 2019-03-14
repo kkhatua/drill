@@ -394,8 +394,8 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
     private List<String> getPossiblePaths(String queryIdString) {
       //Reqd::
       QueryId queryId = QueryIdHelper.getQueryIdFromString(queryIdString);
-      long lowerBoundTime = (Integer.MAX_VALUE - ((queryId.getPart1() + Integer.MIN_VALUE) >> 32)) * 1000; // +/- 1000 for border cases
-      long upperBoundTime = (Integer.MAX_VALUE - ((queryId.getPart1() + Integer.MAX_VALUE) >> 32)) * 1000; // +/- 1000 for border cases
+      long lowerBoundTime = (Integer.MAX_VALUE - ((queryId.getPart1() + Integer.MAX_VALUE) >> 32)) * 1000; // +/- 1000 for border cases
+      long upperBoundTime = (Integer.MAX_VALUE - ((queryId.getPart1() + Integer.MIN_VALUE) >> 32)) * 1000; // +/- 1000 for border cases
       //[sodBug]
       Date lowerBoundDate = new Date(lowerBoundTime);
       logger.info("Inferred LowerBound Time is {} . Look from {}", lowerBoundDate, indexedPathFormat.format(lowerBoundDate));
