@@ -398,10 +398,15 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
       long upperBoundTime = (Integer.MAX_VALUE - ((queryId.getPart1() + Integer.MIN_VALUE) >> 32)) * 1000; // +/- 1000 for border cases
       //[sodBug]
       Date lowerBoundDate = new Date(lowerBoundTime);
-      logger.info("Inferred LowerBound Time is {} . Look from {}", lowerBoundDate, indexedPathFormat.format(lowerBoundDate));
+      String lowerBoundPath = indexedPathFormat.format(lowerBoundDate);
+      logger.info("Inferred LowerBound Time is {} . Look from {}", lowerBoundDate, lowerBoundPath);
       Date upperBoundDate = new Date(upperBoundTime);
       logger.info("Inferred UpperBound Time is {} . Look until {}", upperBoundDate, indexedPathFormat.format(upperBoundDate));
       //[eodBug]
+
+      if (lowerBoundPath.equals(indexedPathFormat.format(upperBoundDate))) {
+        return Collections.singletonList(lowerBoundPath);
+      }
 
       final IncrementType incrementType =
           indexPathPattern.contains("m") ? IncrementType.Minute :
