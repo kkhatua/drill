@@ -113,6 +113,12 @@ public class SetOptionHandler extends AbstractSqlHandler {
       }
     }
 
+    // Skip writing profiles for "ALTER SESSION SET" queries
+    if (optionScope == OptionScope.SESSION && options.getBoolean(ExecConstants.SKIP_ALTER_SESSION_QUERY_PROFILE)) {
+      logger.debug("Will not write profile for ALTER SESSION SET ... ");
+      context.skipWritingProfile(true);
+    }
+
     return DirectPlan.createDirectPlan(context, true, String.format("%s updated.", optionName));
   }
 
