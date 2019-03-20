@@ -93,7 +93,7 @@ public class QueryContext implements AutoCloseable, OptimizerRulesContext, Schem
     this.drillbitContext = drillbitContext;
     this.session = session;
     this.queryId = queryId;
-    skipWritingProfile(false);
+    this.skipProfileWrite = false;
     queryOptions = new QueryOptionManager(session.getOptions());
     executionControls = new ExecutionControls(queryOptions, drillbitContext.getEndpoint());
     plannerSettings = new PlannerSettings(queryOptions, getFunctionRegistry());
