@@ -46,15 +46,21 @@ public class QueryWrapper {
   private static final double HEAP_MEMORY_FAILURE_THRESHOLD = 0.85;
 
   private final String query;
-
   private final String queryType;
+  private final int autoLimitRowCount;
 
   private static MemoryMXBean memMXBean = ManagementFactory.getMemoryMXBean();
 
   @JsonCreator
-  public QueryWrapper(@JsonProperty("query") String query, @JsonProperty("queryType") String queryType) {
+  public QueryWrapper(@JsonProperty("query") String query, @JsonProperty("queryType") String queryType, @JsonProperty("autoLimit") String autoLimit) {
     this.query = query;
     this.queryType = queryType.toUpperCase();
+    this.autoLimitRowCount = autoLimit != null && autoLimit.matches("[0-9]+") ? Integer.valueOf(autoLimit) : 0;
+  }
+
+  @JsonCreator
+  public QueryWrapper(@JsonProperty("query") String query, @JsonProperty("queryType") String queryType) {
+    this(query, queryType, null);
   }
 
   public String getQuery() {
@@ -73,7 +79,10 @@ public class QueryWrapper {
     final RunQuery runQuery = RunQuery.newBuilder().setType(getType())
         .setPlan(getQuery())
         .setResultsMode(QueryResultsMode.STREAM_FULL)
+        .setAutolimitRowcount(autoLimitRowCount)
         .build();
+
+    webUserConnection.setAutoLimitRowCount(autoLimitRowCount);
 
     // Submit user query to Drillbit work queue.
     final QueryId queryId = workManager.getUserWorker().submitWork(webUserConnection, runQuery);
@@ -129,6 +138,7 @@ public class QueryWrapper {
     public final List<Map<String, String>> rows;
     public final List<String> metadata;
     public final String queryState;
+    public final int attemptedAutoLimit;
 
     //DRILL-6847:  Modified the constructor so that the method has access to all the properties in webUserConnection
     public QueryResult(QueryId queryId, WebUserConnection webUserConnection, List<Map<String, String>> rows) {
@@ -137,6 +147,7 @@ public class QueryWrapper {
         this.metadata = webUserConnection.metadata;
         this.queryState = webUserConnection.getQueryState();
         this.rows = rows;
+        this.attemptedAutoLimit = webUserConnection.getAutoLimitRowCount();
       }
 
     public String getQueryId() {
