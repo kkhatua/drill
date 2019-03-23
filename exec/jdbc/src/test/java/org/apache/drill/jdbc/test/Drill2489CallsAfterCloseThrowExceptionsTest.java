@@ -44,7 +44,9 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.drill.jdbc.Driver;
 import org.apache.drill.jdbc.JdbcTestBase;
@@ -380,6 +382,14 @@ public class Drill2489CallsAfterCloseThrowExceptionsTest extends JdbcTestBase {
       }
     }
 
+    public void testAllMethodsExcept(Set<String> skipMethods) {
+      for (Method method : jdbcIntf.getMethods()) {
+        if (!skipMethods.contains(method.getName())) {
+          testOneMethod(method);
+        }
+      }
+    }
+
     public boolean hadAnyFailures() {
       return 0 != failureLinesBuf.length();
     }
@@ -537,7 +547,15 @@ public class Drill2489CallsAfterCloseThrowExceptionsTest extends JdbcTestBase {
         new ClosedPreparedStatementChecker(PreparedStatement.class,
                                            closedPreparedStmtOfOpenConn);
 
-    checker.testAllMethods();
+    //List of methods now supported
+    @SuppressWarnings("serial")
+    Set<String> methodsToSkip = new LinkedHashSet<String>() {{
+        add("getMaxRows");
+        add("setMaxRows");
+        add("getLargeMaxRows");
+        add("setLargeMaxRows");
+      }};
+    checker.testAllMethodsExcept(methodsToSkip);
 
     if (checker.hadAnyFailures()) {
       fail("Already-closed exception error(s): \n" + checker.getReport());
