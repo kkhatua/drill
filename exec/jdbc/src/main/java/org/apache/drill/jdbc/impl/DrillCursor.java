@@ -362,7 +362,7 @@ public class DrillCursor implements Cursor {
     resultsListener = new ResultsListener(this, batchQueueThrottlingThreshold);
     currentBatchHolder = new RecordBatchLoader(client.getAllocator());
 
-    // Set Query Timeout and MaxRows
+    // Set Query Timeout
     logger.debug("Setting timeout as {}", this.statement.getQueryTimeout());
     setTimeout(this.statement.getQueryTimeout());
   }

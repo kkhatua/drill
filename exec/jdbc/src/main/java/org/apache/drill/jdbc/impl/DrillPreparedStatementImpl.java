@@ -265,7 +265,7 @@ abstract class DrillPreparedStatementImpl extends AvaticaPreparedStatement
   @Override
   public void setLargeMaxRows(long maxRowCount) throws SQLException {
     Statement setMaxStmt = this.connection.createStatement();
-    setMaxStmt.execute("ALTER SESSION SET `" + ExecConstants.QUERY_MAX_ROWS + "`="+maxRowCount);
+    setMaxStmt.execute("ALTER SESSION SET `" + ExecConstants.QUERY_MAX_ROWS + "`=" + maxRowCount);
     setMaxStmt.close();
     this.maxRowCount = maxRowCount;
   }

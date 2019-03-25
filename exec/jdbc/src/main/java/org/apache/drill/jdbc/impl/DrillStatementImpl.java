@@ -274,7 +274,7 @@ public class DrillStatementImpl extends AvaticaStatement implements DrillStateme
 
   @Override
   public void setLargeMaxRows(long maxRowCount) throws SQLException {
-    execute("ALTER SESSION SET `" + ExecConstants.QUERY_MAX_ROWS + "`="+maxRowCount);
+    execute("ALTER SESSION SET `" + ExecConstants.QUERY_MAX_ROWS + "`=" + maxRowCount);
     this.maxRowCount = maxRowCount;
   }
 }

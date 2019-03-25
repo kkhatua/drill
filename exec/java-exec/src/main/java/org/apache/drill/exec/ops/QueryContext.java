@@ -81,7 +81,6 @@ public class QueryContext implements AutoCloseable, OptimizerRulesContext, Schem
   /** Stores constants and their holders by type */
   private final Map<String, Map<MinorType, ValueHolder>> constantValueHolderCache;
   private SqlStatementType stmtType;
-  private Integer autoLimitRowCount;
 
   /*
    * Flag to indicate if close has been called, after calling close the first
@@ -109,18 +108,21 @@ public class QueryContext implements AutoCloseable, OptimizerRulesContext, Schem
     }
 
     // Checking for limit on ResultSet rowcount and if user attempting to override the system value
-    int sessionMaxRowCount = queryOptions.getOption(ExecConstants.QUERY_MAX_ROWS).num_val.intValue();
-    int defaultMaxRowCount = queryOptions.getOptionManager(OptionScope.SYSTEM).getOption(ExecConstants.QUERY_MAX_ROWS).num_val.intValue();
+    final int sessionMaxRowCount = queryOptions.getOption(ExecConstants.QUERY_MAX_ROWS).num_val.intValue();
+    final int defaultMaxRowCount = queryOptions.getOptionManager(OptionScope.SYSTEM).getOption(ExecConstants.QUERY_MAX_ROWS).num_val.intValue();
+    int autoLimitRowCount = 0;
     if (sessionMaxRowCount > 0 && defaultMaxRowCount > 0) {
-      this.autoLimitRowCount = Math.min(sessionMaxRowCount, defaultMaxRowCount);
+      autoLimitRowCount = Math.min(sessionMaxRowCount, defaultMaxRowCount);
     } else {
-      this.autoLimitRowCount = Math.max(sessionMaxRowCount, defaultMaxRowCount);
+      autoLimitRowCount = Math.max(sessionMaxRowCount, defaultMaxRowCount);
     }
     if (autoLimitRowCount == defaultMaxRowCount && defaultMaxRowCount != sessionMaxRowCount) {
       // Required to indicate via OptionScope=QueryLevel that session limit is overridden by system limit
       queryOptions.setLocalOption(ExecConstants.QUERY_MAX_ROWS, autoLimitRowCount);
     }
-    logger.debug("ResultSet size is auto-limited to {} rows [Session: {} / Default: {}]", this.autoLimitRowCount, sessionMaxRowCount, defaultMaxRowCount);
+    if (autoLimitRowCount > 0) {
+      logger.debug("ResultSet size is auto-limited to {} rows [Session: {} / Default: {}]", autoLimitRowCount, sessionMaxRowCount, defaultMaxRowCount);
+    }
 
     queryContextInfo = Utilities.createQueryContextInfo(session.getDefaultSchemaPath(), session.getSessionId());
 
@@ -299,18 +301,10 @@ public class QueryContext implements AutoCloseable, OptimizerRulesContext, Schem
   }
 
   /**
-   * Returns the maximum size of auto-limited resultset
-   * @return Maximum size of auto-limited resultSet
-   */
-  public int getAutoLimitRowCount() {
-    return autoLimitRowCount;
-  }
-
-  /**
    * Allows to disable autolimit in case it is not applicable
    */
   public void disableAutoLimit() {
-    autoLimitRowCount = 0;
+    queryOptions.setLocalOption(ExecConstants.QUERY_MAX_ROWS, 0);
   }
 
   @Override

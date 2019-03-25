@@ -217,7 +217,7 @@ public class DrillSqlWorker {
   }
 
   private static boolean isAutoLimitShouldBeApplied(QueryContext context, SqlNode sqlNode) {
-    return (context.getAutoLimitRowCount() > 0) && sqlNode.getKind().belongsTo(SqlKind.QUERY)
+    return (context.getOptions().getOption(ExecConstants.QUERY_MAX_ROWS).num_val.intValue() > 0) && sqlNode.getKind().belongsTo(SqlKind.QUERY)
         && (sqlNode.getKind() != SqlKind.ORDER_BY || isAutoLimitLessThanOrderByFetch((SqlOrderBy) sqlNode, context));
   }
 
@@ -232,11 +232,11 @@ public class DrillSqlWorker {
   }
 
   private static boolean isAutoLimitLessThanOrderByFetch(SqlOrderBy orderBy, QueryContext context) {
-    return orderBy.fetch == null || Integer.parseInt(orderBy.fetch.toString()) > context.getAutoLimitRowCount();
+    return orderBy.fetch == null || Integer.parseInt(orderBy.fetch.toString()) > context.getOptions().getOption(ExecConstants.QUERY_MAX_ROWS).num_val.intValue();
   }
 
   private static SqlNode wrapWithAutoLimit(SqlNode sqlNode, QueryContext context) {
-    SqlNumericLiteral autoLimitLiteral = SqlLiteral.createExactNumeric(String.valueOf(context.getAutoLimitRowCount()), SqlParserPos.ZERO);
+    SqlNumericLiteral autoLimitLiteral = SqlLiteral.createExactNumeric(String.valueOf(context.getOptions().getOption(ExecConstants.QUERY_MAX_ROWS).num_val.intValue()), SqlParserPos.ZERO);
     if (sqlNode.getKind() == SqlKind.ORDER_BY) {
       SqlOrderBy orderBy = (SqlOrderBy) sqlNode;
       return new SqlOrderBy(orderBy.getParserPosition(), orderBy.query, orderBy.orderList, orderBy.offset, autoLimitLiteral);

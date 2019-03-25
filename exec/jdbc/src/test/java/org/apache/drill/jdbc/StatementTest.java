@@ -57,7 +57,7 @@ public class StatementTest extends JdbcTestBase {
       "union SELECT cast(random() as varchar) as myStr FROM (VALUES(1)) ";
   private static final String SYS_OPTIONS_SQL = "SELECT * FROM sys.options";
   private static final String SYS_OPTIONS_SQL_LIMIT_10 = "SELECT * FROM sys.options LIMIT 12";
-  private static final String ALTER_SYS_OPTIONS_MAX_ROWS_LIMIT_X = "ALTER SYSTEM SET `"+ExecConstants.QUERY_MAX_ROWS+"`=";
+  private static final String ALTER_SYS_OPTIONS_MAX_ROWS_LIMIT_X = "ALTER SYSTEM SET `" + ExecConstants.QUERY_MAX_ROWS + "`=";
   // Locks used across StatementTest and PreparedStatementTest
   static final Semaphore maxRowsSysOptionLock = new Semaphore(1);
 
