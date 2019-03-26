@@ -254,7 +254,7 @@ public class StatementTest extends JdbcTestBase {
    */
   @Test
   public void   testDefaultGetMaxRows() throws SQLException {
-    try(Statement stmt = connection.createStatement()) {
+    try (Statement stmt = connection.createStatement()) {
       int maxRowsValue = stmt.getMaxRows();
       assertEquals(0, maxRowsValue);
     }
@@ -284,7 +284,6 @@ public class StatementTest extends JdbcTestBase {
     try (Statement stmt = connection.createStatement()) {
       // Setting positive value
       int valueToSet = RANDOMIZER.nextInt(59)+1;
-      logger.info("Setting maximum resultset size as {} rows", valueToSet);
       stmt.setMaxRows(valueToSet);
       assertEquals( valueToSet, stmt.getMaxRows() );
     }
@@ -304,6 +303,7 @@ public class StatementTest extends JdbcTestBase {
         rs.getBytes(1);
         rowCount++;
       }
+      rs.close();
       assertTrue(rowCount > 0);
     }
   }
@@ -323,7 +323,7 @@ public class StatementTest extends JdbcTestBase {
         rs.getBytes(1);
         rowCount++;
       }
-      logger.info("MaxRows was set as {} and query limited to 10 returned a resultSet of {} rows", valueToSet, rowCount);
+      rs.close();
       assertEquals(valueToSet, rowCount);
     }
   }
@@ -343,7 +343,7 @@ public class StatementTest extends JdbcTestBase {
         rs.getBytes(1);
         rowCount++;
       }
-      logger.info("MaxRows was set as {} and query limited to 10 returned a resultSet of {} rows", valueToSet, rowCount);
+      rs.close();
       assertTrue(valueToSet > rowCount);
     }
   }
@@ -365,7 +365,7 @@ public class StatementTest extends JdbcTestBase {
         rs.getBytes(1);
         rowCount++;
       }
-      logger.info("MaxRows was set as {} (SystemLimit={} rows) returned a resultSet of {} rows", valueToSet, sysValueToSet, rowCount);
+      rs.close();
       assertEquals(valueToSet, rowCount);
     }
     setSystemMaxRows(0); // Reset value
@@ -388,7 +388,7 @@ public class StatementTest extends JdbcTestBase {
         rs.getBytes(1);
         rowCount++;
       }
-      logger.info("MaxRows was set as {} (SystemLimit={} rows) returned a resultSet of {} rows", valueToSet, sysValueToSet, rowCount);
+      rs.close();
       assertEquals(sysValueToSet, rowCount);
     }
     setSystemMaxRows(0); // Reset value
@@ -406,6 +406,7 @@ public class StatementTest extends JdbcTestBase {
       stmt.executeQuery(ALTER_SYS_OPTIONS_MAX_ROWS_LIMIT_X + sysValueToSet);
       ResultSet rs = stmt.getResultSet();
       while (rs.next()) { /*Do Nothing*/ }
+      rs.close();
     } catch (SQLException e) {
       // Release lock either way
       maxRowsSysOptionLock.release();

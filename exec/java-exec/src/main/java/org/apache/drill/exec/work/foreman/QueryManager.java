@@ -377,7 +377,7 @@ public class QueryManager implements AutoCloseable {
       profileBuilder.setQuery(queryText);
     }
 
-    final int autoLimitRowCount = foreman.getQueryContext().getOptions().getOption(ExecConstants.QUERY_MAX_ROWS).num_val.intValue();
+    int autoLimitRowCount = foreman.getQueryContext().getOptions().getOption(ExecConstants.QUERY_MAX_ROWS).num_val.intValue();
     if (autoLimitRowCount > 0) {
       profileBuilder.setAutoLimit(autoLimitRowCount);
       logger.debug("The query's resultset was limited to {} rows", autoLimitRowCount);

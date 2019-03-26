@@ -153,8 +153,8 @@ public class Foreman implements Runnable {
         drillbitContext.getClusterCoordinator(), this);
     this.queryRM = drillbitContext.getResourceManager().newQueryRM(this);
     this.fragmentsRunner = new FragmentsRunner(bee, initiatingClient, drillbitContext, this);
-    this.profileOption = setProfileOption(queryContext.getOptions());
     this.queryStateProcessor = new QueryStateProcessor(queryIdString, queryManager, drillbitContext, new ForemanResult());
+    this.profileOption = setProfileOption(queryContext.getOptions());
     this.enableRuntimeFilter = queryContext.getOptions().getOption(ExecConstants.HASHJOIN_ENABLE_RUNTIME_FILTER_KEY).bool_val;
   }
 
@@ -546,9 +546,9 @@ public class Foreman implements Runnable {
           ServerPreparedStatementState.PARSER.parseFrom(preparedStatementHandle.getServerInfo());
     } catch (final InvalidProtocolBufferException ex) {
       throw UserException.parseError(ex)
-      .message("Failed to parse the prepared statement handle. " +
-          "Make sure the handle is same as one returned from create prepared statement call.")
-      .build(logger);
+          .message("Failed to parse the prepared statement handle. " +
+              "Make sure the handle is same as one returned from create prepared statement call.")
+          .build(logger);
     }
 
     queryText = serverState.getSqlQuery();

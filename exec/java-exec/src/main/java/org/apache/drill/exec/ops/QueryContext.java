@@ -108,8 +108,8 @@ public class QueryContext implements AutoCloseable, OptimizerRulesContext, Schem
     }
 
     // Checking for limit on ResultSet rowcount and if user attempting to override the system value
-    final int sessionMaxRowCount = queryOptions.getOption(ExecConstants.QUERY_MAX_ROWS).num_val.intValue();
-    final int defaultMaxRowCount = queryOptions.getOptionManager(OptionScope.SYSTEM).getOption(ExecConstants.QUERY_MAX_ROWS).num_val.intValue();
+    int sessionMaxRowCount = queryOptions.getOption(ExecConstants.QUERY_MAX_ROWS).num_val.intValue();
+    int defaultMaxRowCount = queryOptions.getOptionManager(OptionScope.SYSTEM).getOption(ExecConstants.QUERY_MAX_ROWS).num_val.intValue();
     int autoLimitRowCount = 0;
     if (sessionMaxRowCount > 0 && defaultMaxRowCount > 0) {
       autoLimitRowCount = Math.min(sessionMaxRowCount, defaultMaxRowCount);
@@ -298,13 +298,6 @@ public class QueryContext implements AutoCloseable, OptimizerRulesContext, Schem
 
   public RemoteFunctionRegistry getRemoteFunctionRegistry() {
     return drillbitContext.getRemoteFunctionRegistry();
-  }
-
-  /**
-   * Allows to disable autolimit in case it is not applicable
-   */
-  public void disableAutoLimit() {
-    queryOptions.setLocalOption(ExecConstants.QUERY_MAX_ROWS, 0);
   }
 
   @Override

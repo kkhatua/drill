@@ -226,7 +226,7 @@ public class DrillSqlWorker {
     if (isAutoLimitShouldBeApplied(context, sqlNode)) {
       sqlNode = wrapWithAutoLimit(sqlNode, context);
     } else {
-      context.disableAutoLimit();
+      context.getOptions().setLocalOption(ExecConstants.QUERY_MAX_ROWS, 0);
     }
     return sqlNode;
   }

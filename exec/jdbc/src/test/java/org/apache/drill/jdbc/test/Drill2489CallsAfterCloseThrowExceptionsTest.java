@@ -548,7 +548,6 @@ public class Drill2489CallsAfterCloseThrowExceptionsTest extends JdbcTestBase {
                                            closedPreparedStmtOfOpenConn);
 
     //List of methods now supported
-    @SuppressWarnings("serial")
     Set<String> methodsToSkip = new LinkedHashSet<String>() {{
         add("getMaxRows");
         add("setMaxRows");
