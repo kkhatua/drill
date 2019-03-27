@@ -279,8 +279,8 @@ public class PreparedStatementTest extends JdbcTestBase {
       int valueToSet = -10;
       try {
         stmt.setQueryTimeout(valueToSet);
-      } catch ( final SQLException e) {
-        assertThat( e.getMessage(), containsString( "illegal timeout value") );
+      } catch (final SQLException e) {
+        assertThat(e.getMessage(), containsString( "illegal timeout value") );
       }
     }
   }
@@ -292,7 +292,7 @@ public class PreparedStatementTest extends JdbcTestBase {
   public void testValidSetQueryTimeout() throws SQLException {
     try (PreparedStatement stmt = connection.prepareStatement(SYS_VERSION_SQL)) {
       //Setting positive value
-      int valueToSet = RANDOMIZER.nextInt(59)+1;
+      int valueToSet = RANDOMIZER.nextInt(59) + 1;
       logger.info("Setting timeout as {} seconds", valueToSet);
       stmt.setQueryTimeout(valueToSet);
       assertEquals(valueToSet, stmt.getQueryTimeout());
@@ -424,7 +424,7 @@ public class PreparedStatementTest extends JdbcTestBase {
    * Test for reading of default max rows
    */
   @Test
-  public void   testDefaultGetMaxRows() throws SQLException {
+  public void testDefaultGetMaxRows() throws SQLException {
     try (PreparedStatement pStmt = connection.prepareStatement(SYS_OPTIONS_SQL)) {
       int maxRowsValue = pStmt.getMaxRows();
       assertEquals(0, maxRowsValue);
@@ -441,8 +441,8 @@ public class PreparedStatementTest extends JdbcTestBase {
       int valueToSet = -10;
       try {
         pStmt.setMaxRows(valueToSet);
-      } catch ( final SQLException e) {
-        assertThat( e.getMessage(), containsString("VALIDATION ERROR: Option exec.query.max_rows must be between 0 and ") );
+      } catch (final SQLException e) {
+        assertThat(e.getMessage(), containsString("illegal maxRows value: " + valueToSet));
       }
     }
   }
@@ -454,9 +454,9 @@ public class PreparedStatementTest extends JdbcTestBase {
   public void testValidSetMaxRows() throws SQLException {
     try (PreparedStatement pStmt = connection.prepareStatement(SYS_OPTIONS_SQL)) {
       //Setting positive value
-      int valueToSet = RANDOMIZER.nextInt(59)+1;
+      int valueToSet = RANDOMIZER.nextInt(59) + 1;
       pStmt.setMaxRows(valueToSet);
-      assertEquals( valueToSet, pStmt.getMaxRows() );
+      assertEquals(valueToSet, pStmt.getMaxRows());
     }
   }
 
@@ -485,7 +485,7 @@ public class PreparedStatementTest extends JdbcTestBase {
   @Test
   public void testSetMaxRowsLowerThanQueryLimit() throws SQLException {
     try (PreparedStatement pStmt = connection.prepareStatement(SYS_OPTIONS_SQL_LIMIT_10)) {
-      int valueToSet = RANDOMIZER.nextInt(9)+1; //range:[1-9]
+      int valueToSet = RANDOMIZER.nextInt(9) + 1; // range: [1-9]
       pStmt.setMaxRows(valueToSet);
       pStmt.executeQuery();
       ResultSet rs = pStmt.getResultSet();
@@ -505,7 +505,7 @@ public class PreparedStatementTest extends JdbcTestBase {
   @Test
   public void testSetMaxRowsHigherThanQueryLimit() throws SQLException {
     try (PreparedStatement pStmt = connection.prepareStatement(SYS_OPTIONS_SQL_LIMIT_10)) {
-      int valueToSet = RANDOMIZER.nextInt(10)+11; //range:[11-20]
+      int valueToSet = RANDOMIZER.nextInt(10) + 11; // range: [11-20]
       pStmt.setMaxRows(valueToSet);
       pStmt.executeQuery();
       ResultSet rs = pStmt.getResultSet();
@@ -524,10 +524,10 @@ public class PreparedStatementTest extends JdbcTestBase {
    */
   @Test
   public void testSetMaxRowsLowerThanSystemLimit() throws SQLException {
-    int sysValueToSet = RANDOMIZER.nextInt(5)+6; //range:[6-10]
+    int sysValueToSet = RANDOMIZER.nextInt(5) + 6; // range: [6-10]
     setSystemMaxRows(sysValueToSet);
     try (PreparedStatement pStmt = connection.prepareStatement(SYS_OPTIONS_SQL)) {
-      int valueToSet = RANDOMIZER.nextInt(5)+1; //range:[1-5]
+      int valueToSet = RANDOMIZER.nextInt(5) + 1; // range: [1-5]
       pStmt.setMaxRows(valueToSet);
       pStmt.executeQuery();
       ResultSet rs = pStmt.getResultSet();
@@ -547,10 +547,10 @@ public class PreparedStatementTest extends JdbcTestBase {
    */
   @Test
   public void testSetMaxRowsHigherThanSystemLimit() throws SQLException {
-    int sysValueToSet = RANDOMIZER.nextInt(5)+6; //range:[6-10]
+    int sysValueToSet = RANDOMIZER.nextInt(5) + 6; // range: [6-10]
     setSystemMaxRows(sysValueToSet);
     try (PreparedStatement pStmt = connection.prepareStatement(SYS_OPTIONS_SQL)) {
-      int valueToSet = RANDOMIZER.nextInt(5)+11; //range:[11-15]
+      int valueToSet = RANDOMIZER.nextInt(5) + 11; // range: [11-15]
       pStmt.setMaxRows(valueToSet);
       pStmt.executeQuery();
       ResultSet rs = pStmt.getResultSet();

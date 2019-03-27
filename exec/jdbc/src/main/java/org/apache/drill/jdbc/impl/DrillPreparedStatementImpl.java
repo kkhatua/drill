@@ -267,7 +267,6 @@ abstract class DrillPreparedStatementImpl extends AvaticaPreparedStatement
     super.setLargeMaxRows(maxRowCount);
     try (Statement statement = this.connection.createStatement()) {
       statement.execute("ALTER SESSION SET `" + ExecConstants.QUERY_MAX_ROWS + "`=" + maxRowCount);
-      statement.close();
     }
   }
 }
