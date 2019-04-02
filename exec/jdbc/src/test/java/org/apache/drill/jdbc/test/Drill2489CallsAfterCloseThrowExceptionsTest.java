@@ -537,6 +537,8 @@ public class Drill2489CallsAfterCloseThrowExceptionsTest extends JdbcTestBase {
         new ClosedPreparedStatementChecker(PreparedStatement.class,
                                            closedPreparedStmtOfOpenConn);
 
+    checker.testAllMethods();
+
     if (checker.hadAnyFailures()) {
       fail("Already-closed exception error(s): \n" + checker.getReport());
     }

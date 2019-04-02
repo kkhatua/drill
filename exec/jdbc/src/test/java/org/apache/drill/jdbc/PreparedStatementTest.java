@@ -58,7 +58,9 @@ import org.apache.drill.exec.store.ischema.InfoSchemaConstants;
 import org.apache.drill.exec.testing.Controls;
 import org.apache.drill.categories.JdbcTest;
 import org.hamcrest.Matcher;
+import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -116,6 +118,18 @@ public class PreparedStatementTest extends JdbcTestBase {
       }
     }
     connection.close();
+  }
+
+  @Before
+  public void getExclusiveLock() {
+    // Acquire lock
+    maxRowsSysOptionLock.acquireUninterruptibly();
+  }
+
+  @After
+  public void releaseExclusiveLock() {
+    // Release lock either way
+    maxRowsSysOptionLock.release();
   }
 
   //////////
@@ -439,11 +453,14 @@ public class PreparedStatementTest extends JdbcTestBase {
     try (PreparedStatement pStmt = connection.prepareStatement(SYS_OPTIONS_SQL)) {
       //Setting negative value
       int valueToSet = -10;
+      int origMaxRows = pStmt.getMaxRows();
       try {
         pStmt.setMaxRows(valueToSet);
       } catch (final SQLException e) {
         assertThat(e.getMessage(), containsString("illegal maxRows value: " + valueToSet));
       }
+      // Confirm no change
+      assertEquals(origMaxRows, pStmt.getMaxRows());
     }
   }
 
@@ -621,10 +638,6 @@ public class PreparedStatementTest extends JdbcTestBase {
 
   // Sets the SystemMaxRows option
   private void setSystemMaxRows(int sysValueToSet) throws SQLException {
-    // Acquire lock if Non-Zero Value (i.e. a test is in progress)
-    if (sysValueToSet != 0) {
-      maxRowsSysOptionLock.acquireUninterruptibly();
-    }
     // Setting the value
     try (Statement stmt = connection.createStatement()) {
       stmt.executeQuery(ALTER_SYS_OPTIONS_MAX_ROWS_LIMIT_X + sysValueToSet);
@@ -632,12 +645,7 @@ public class PreparedStatementTest extends JdbcTestBase {
       while (rs.next()) { /*Do Nothing*/ }
       rs.close();
     } catch (SQLException e) {
-      // Release lock either way
-      maxRowsSysOptionLock.release();
       throw e;
-    }
-    if (sysValueToSet == 0) {
-      maxRowsSysOptionLock.release();
     }
   }
 }
