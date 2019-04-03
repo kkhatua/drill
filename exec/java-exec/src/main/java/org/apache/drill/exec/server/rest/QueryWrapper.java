@@ -58,11 +58,6 @@ public class QueryWrapper {
     this.autoLimitRowCount = autoLimit != null && autoLimit.matches("[0-9]+") ? Integer.valueOf(autoLimit) : 0;
   }
 
-  @JsonCreator
-  public QueryWrapper(@JsonProperty("query") String query, @JsonProperty("queryType") String queryType) {
-    this(query, queryType, null);
-  }
-
   public String getQuery() {
     return query;
   }
