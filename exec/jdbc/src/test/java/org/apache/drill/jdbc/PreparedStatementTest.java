@@ -48,7 +48,6 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.Properties;
 import java.util.Random;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.drill.exec.ExecConstants;
@@ -58,9 +57,7 @@ import org.apache.drill.exec.store.ischema.InfoSchemaConstants;
 import org.apache.drill.exec.testing.Controls;
 import org.apache.drill.categories.JdbcTest;
 import org.hamcrest.Matcher;
-import org.junit.After;
 import org.junit.AfterClass;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -82,11 +79,6 @@ public class PreparedStatementTest extends JdbcTestBase {
       "SELECT cast(random() as varchar) as myStr FROM (VALUES(1)) " +
       "union SELECT cast(random() as varchar) as myStr FROM (VALUES(1)) " +
       "union SELECT cast(random() as varchar) as myStr FROM (VALUES(1)) ";
-  private static final String SYS_OPTIONS_SQL = "SELECT * FROM sys.options";
-  private static final String SYS_OPTIONS_SQL_LIMIT_10 = "SELECT * FROM sys.options LIMIT 12";
-  private static final String ALTER_SYS_OPTIONS_MAX_ROWS_LIMIT_X = "ALTER SYSTEM SET `" + ExecConstants.QUERY_MAX_ROWS + "`=";
-  //Locks used across StatementTest and PreparedStatementTest
-  private static Semaphore maxRowsSysOptionLock = StatementTest.maxRowsSysOptionLock;
 
   /** Fuzzy matcher for parameters-not-supported message assertions.  (Based on
    *  current "Prepared-statement dynamic parameters are not supported.") */
@@ -118,18 +110,6 @@ public class PreparedStatementTest extends JdbcTestBase {
       }
     }
     connection.close();
-  }
-
-  @Before
-  public void getExclusiveLock() {
-    // Acquire lock
-    maxRowsSysOptionLock.acquireUninterruptibly();
-  }
-
-  @After
-  public void releaseExclusiveLock() {
-    // Release lock either way
-    maxRowsSysOptionLock.release();
   }
 
   //////////
@@ -431,158 +411,6 @@ public class PreparedStatementTest extends JdbcTestBase {
     }
   }
 
-  ////////////////////////////////////////
-  // Query maxRows methods:
-
-  /**
-   * Test for reading of default max rows
-   */
-  @Test
-  public void testDefaultGetMaxRows() throws SQLException {
-    try (PreparedStatement pStmt = connection.prepareStatement(SYS_OPTIONS_SQL)) {
-      int maxRowsValue = pStmt.getMaxRows();
-      assertEquals(0, maxRowsValue);
-    }
-  }
-
-  /**
-   * Test Invalid parameter by giving negative maxRows value
-   */
-  @Test
-  public void testInvalidSetMaxRows() throws SQLException {
-    try (PreparedStatement pStmt = connection.prepareStatement(SYS_OPTIONS_SQL)) {
-      //Setting negative value
-      int valueToSet = -10;
-      int origMaxRows = pStmt.getMaxRows();
-      try {
-        pStmt.setMaxRows(valueToSet);
-      } catch (final SQLException e) {
-        assertThat(e.getMessage(), containsString("illegal maxRows value: " + valueToSet));
-      }
-      // Confirm no change
-      assertEquals(origMaxRows, pStmt.getMaxRows());
-    }
-  }
-
-  /**
-   * Test setting a valid maxRows value
-   */
-  @Test
-  public void testValidSetMaxRows() throws SQLException {
-    try (PreparedStatement pStmt = connection.prepareStatement(SYS_OPTIONS_SQL)) {
-      //Setting positive value
-      int valueToSet = RANDOMIZER.nextInt(59) + 1;
-      pStmt.setMaxRows(valueToSet);
-      assertEquals(valueToSet, pStmt.getMaxRows());
-    }
-  }
-
-  /**
-   * Test setting maxSize as zero (i.e. no Limit)
-   */
-  @Test
-  public void testSetMaxRowsAsZero() throws SQLException {
-    try (PreparedStatement pStmt = connection.prepareStatement(SYS_OPTIONS_SQL)) {
-      pStmt.setMaxRows(0);
-      pStmt.execute();
-      ResultSet rs = pStmt.getResultSet();
-      int rowCount = 0;
-      while (rs.next()) {
-        rs.getBytes(1);
-        rowCount++;
-      }
-      rs.close();
-      assertTrue(rowCount > 0);
-    }
-  }
-
-  /**
-   * Test setting maxSize at a value lower than existing query limit
-   */
-  @Test
-  public void testSetMaxRowsLowerThanQueryLimit() throws SQLException {
-    try (PreparedStatement pStmt = connection.prepareStatement(SYS_OPTIONS_SQL_LIMIT_10)) {
-      int valueToSet = RANDOMIZER.nextInt(9) + 1; // range: [1-9]
-      pStmt.setMaxRows(valueToSet);
-      pStmt.executeQuery();
-      ResultSet rs = pStmt.getResultSet();
-      int rowCount = 0;
-      while (rs.next()) {
-        rs.getBytes(1);
-        rowCount++;
-      }
-      rs.close();
-      assertEquals(valueToSet, rowCount);
-    }
-  }
-
-  /**
-   * Test setting maxSize at a value higher than existing query limit
-   */
-  @Test
-  public void testSetMaxRowsHigherThanQueryLimit() throws SQLException {
-    try (PreparedStatement pStmt = connection.prepareStatement(SYS_OPTIONS_SQL_LIMIT_10)) {
-      int valueToSet = RANDOMIZER.nextInt(10) + 11; // range: [11-20]
-      pStmt.setMaxRows(valueToSet);
-      pStmt.executeQuery();
-      ResultSet rs = pStmt.getResultSet();
-      int rowCount = 0;
-      while (rs.next()) {
-        rs.getBytes(1);
-        rowCount++;
-      }
-      rs.close();
-      assertTrue(valueToSet > rowCount);
-    }
-  }
-
-  /**
-   * Test setting maxSize at a value lower than existing SYSTEM limit
-   */
-  @Test
-  public void testSetMaxRowsLowerThanSystemLimit() throws SQLException {
-    int sysValueToSet = RANDOMIZER.nextInt(5) + 6; // range: [6-10]
-    setSystemMaxRows(sysValueToSet);
-    try (PreparedStatement pStmt = connection.prepareStatement(SYS_OPTIONS_SQL)) {
-      int valueToSet = RANDOMIZER.nextInt(5) + 1; // range: [1-5]
-      pStmt.setMaxRows(valueToSet);
-      pStmt.executeQuery();
-      ResultSet rs = pStmt.getResultSet();
-      int rowCount = 0;
-      while (rs.next()) {
-        rs.getBytes(1);
-        rowCount++;
-      }
-      rs.close();
-      assertEquals(valueToSet, rowCount);
-    }
-    setSystemMaxRows(0); //RESET
-  }
-
-  /**
-   * Test setting maxSize at a value higher than existing SYSTEM limit
-   */
-  @Test
-  public void testSetMaxRowsHigherThanSystemLimit() throws SQLException {
-    int sysValueToSet = RANDOMIZER.nextInt(5) + 6; // range: [6-10]
-    setSystemMaxRows(sysValueToSet);
-    try (PreparedStatement pStmt = connection.prepareStatement(SYS_OPTIONS_SQL)) {
-      int valueToSet = RANDOMIZER.nextInt(5) + 11; // range: [11-15]
-      pStmt.setMaxRows(valueToSet);
-      pStmt.executeQuery();
-      ResultSet rs = pStmt.getResultSet();
-      int rowCount = 0;
-      while (rs.next()) {
-        rs.getBytes(1);
-        rowCount++;
-      }
-      rs.close();
-      assertEquals(sysValueToSet, rowCount);
-    }
-    setSystemMaxRows(0); //RESET
-  }
-
-
   //////////
   // Parameters-not-implemented tests:
 
@@ -632,20 +460,6 @@ public class PreparedStatementTest extends JdbcTestBase {
         );
         throw e;
       }
-    }
-  }
-
-
-  // Sets the SystemMaxRows option
-  private void setSystemMaxRows(int sysValueToSet) throws SQLException {
-    // Setting the value
-    try (Statement stmt = connection.createStatement()) {
-      stmt.executeQuery(ALTER_SYS_OPTIONS_MAX_ROWS_LIMIT_X + sysValueToSet);
-      ResultSet rs = stmt.getResultSet();
-      while (rs.next()) { /*Do Nothing*/ }
-      rs.close();
-    } catch (SQLException e) {
-      throw e;
     }
   }
 }
