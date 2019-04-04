@@ -49,14 +49,13 @@ import org.junit.experimental.categories.Category;
 @Category(JdbcTest.class)
 public class PreparedStatementMaxRowsTest extends JdbcTestBase {
 
-//  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(PreparedStatementMaxRowsTest.class);
   private static final Random RANDOMIZER = new Random(20150304);
 
   private static final String SYS_OPTIONS_SQL = "SELECT * FROM sys.options";
   private static final String SYS_OPTIONS_SQL_LIMIT_10 = "SELECT * FROM sys.options LIMIT 12";
   private static final String ALTER_SYS_OPTIONS_MAX_ROWS_LIMIT_X = "ALTER SYSTEM SET `" + ExecConstants.QUERY_MAX_ROWS + "`=";
   // Lock used by all tests to avoid corrupting test scenario
-  static final Semaphore maxRowsSysOptionLock = new Semaphore(1);
+  private static final Semaphore maxRowsSysOptionLock = new Semaphore(1);
 
   private static Connection connection;
 
@@ -65,10 +64,10 @@ public class PreparedStatementMaxRowsTest extends JdbcTestBase {
   public static void setUpConnection() throws SQLException {
     Driver.load();
     Properties properties = new Properties();
-    // Increased prepared statement creation timeout so test doesn't timeout on my laptop
+    // Increased prepared statement creation timeout to avoid timeout failures
     properties.setProperty(ExecConstants.bootDefaultFor(ExecConstants.CREATE_PREPARE_STATEMENT_TIMEOUT_MILLIS), "30000");
-    connection = DriverManager.getConnection( "jdbc:drill:zk=local", properties);
-    try(Statement stmt = connection.createStatement()) {
+    connection = DriverManager.getConnection("jdbc:drill:zk=local", properties);
+    try (Statement stmt = connection.createStatement()) {
       stmt.execute(String.format("alter session set `%s` = true", PlannerSettings.ENABLE_DECIMAL_DATA_TYPE_KEY));
     }
   }
@@ -76,11 +75,8 @@ public class PreparedStatementMaxRowsTest extends JdbcTestBase {
   @AfterClass
   public static void tearDownConnection() throws SQLException {
     if (connection != null) {
-      try (Statement stmt = connection.createStatement()) {
-        stmt.execute(String.format("alter session set `%s` = false", PlannerSettings.ENABLE_DECIMAL_DATA_TYPE_KEY));
-      }
+      connection.close();
     }
-    connection.close();
   }
 
   @Before

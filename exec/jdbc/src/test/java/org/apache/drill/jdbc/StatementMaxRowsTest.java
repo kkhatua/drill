@@ -44,14 +44,13 @@ import java.sql.SQLException;
 @Category(JdbcTest.class)
 public class StatementMaxRowsTest extends JdbcTestBase {
 
-//  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(StatementMaxRowsTest.class);
   private static final Random RANDOMIZER = new Random(20150304);
 
   private static final String SYS_OPTIONS_SQL = "SELECT * FROM sys.options";
   private static final String SYS_OPTIONS_SQL_LIMIT_10 = "SELECT * FROM sys.options LIMIT 12";
   private static final String ALTER_SYS_OPTIONS_MAX_ROWS_LIMIT_X = "ALTER SYSTEM SET `" + ExecConstants.QUERY_MAX_ROWS + "`=";
   // Lock used by all tests to avoid corrupting test scenario
-  static final Semaphore maxRowsSysOptionLock = new Semaphore(1);
+  private static final Semaphore maxRowsSysOptionLock = new Semaphore(1);
 
   private static Connection connection;
 
@@ -60,12 +59,14 @@ public class StatementMaxRowsTest extends JdbcTestBase {
     // (Note: Can't use JdbcTest's connect(...) because JdbcTest closes
     // Connection--and other JDBC objects--on test method failure, but this test
     // class uses some objects across methods.)
-    connection = new Driver().connect( "jdbc:drill:zk=local", null );
+    connection = new Driver().connect("jdbc:drill:zk=local", null);
   }
 
   @AfterClass
   public static void tearDownStatement() throws SQLException {
-    connection.close();
+    if (connection != null) {
+      connection.close();
+    }
   }
 
   @Before
