@@ -75,7 +75,7 @@
         for(var i=0; i < checkedCount; i++) {
             let queryToCancel = checkedBoxes[i].value;
             //Asynchronously cancel the query
-            $.get("/profiles/cancel/" + queryToCancel, function(data, status){
+            $.get("./profiles/cancel/" + queryToCancel, function(data, status){
                 /*Not Tracking Response*/
             });
         }
@@ -169,7 +169,7 @@
     <tr>
       <td><h3>Completed Queries</h3></td>
       <td align="right">
-        <form name="profileFetch" action="/profiles" onsubmit="return checkMaxFetch();" method="get"><span title="Max number of profiles to load">Loaded <b>${model.getFinishedQueries()?size}</b> profiles </span>
+        <form name="profileFetch" action="./profiles" onsubmit="return checkMaxFetch();" method="get"><span title="Max number of profiles to load">Loaded <b>${model.getFinishedQueries()?size}</b> profiles </span>
         <input id="fetchMax" type="text" size="5" name="max" value="" style="text-align: right" />
         <input type="submit" value="Reload"/>
       </form></td>
@@ -216,7 +216,7 @@
                 <td>${query.getTime()}</td>
                 <td>${query.getUser()}</td>
                 <td>
-                    <a href="/profiles/${query.getQueryId()}">
+                    <a href="./profiles/${query.getQueryId()}">
                         <div style="height:100%;width:100%;white-space:pre-line">${query.getQuery()}</div>
                     </a>
                 </td>
