@@ -281,6 +281,7 @@
               }
               let address = currentRow.find("#address").contents().get(0).nodeValue.trim();
               let restPort = currentRow.find("#httpPort").contents().get(0).nodeValue.trim();
+              //TODO[ingres]: 
               let altStateUrl = location.protocol + "//" + address+":"+restPort + "/state";
               let altResponse = $.ajax({
                url:altStateUrl, 
@@ -417,6 +418,7 @@
 
       //Updates the outstanding queries in flight before shutdown
       function fillQueryCount(row_id) {
+          //TODO[ingres]
           let requestPath = "/queriesCount";
           let url = getRequestUrl(requestPath);
           let result = $.ajax({
@@ -469,6 +471,7 @@
       function getRequestUrl(requestPath) {
             let protocol = location.protocol;
             let host = location.host;
+            //TODO[ingres]
             var url = protocol + "//" + host + requestPath;
             return url;
       }
@@ -499,7 +502,7 @@
            If Authentication or SSL is enabled; we'll assume we don't have valid certificates
         */
         let remoteHost = location.protocol+"//"+drillbit+":"+webport;
-        //
+        //TODO[ingres]
         let result = $.ajax({
           type: 'GET',
           url: location.protocol+"//"+drillbit+":"+webport+"/status/metrics",
