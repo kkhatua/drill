@@ -87,6 +87,20 @@ public class QueryWrapper {
     }
     webUserConnection.setAutoLimitRowCount(maxRows);
 
+    //TODO:
+    /*
+    long userDefTimeout = 0L;
+    String MY_TIMEOUT = "exec.query.timeout";
+    final long defaultTimeout = webUserConnection.getSession().getOptions().getLong(MY_TIMEOUT);
+    long sessionTimeout = 0;
+    if (userDefTimeout > 0 && defaultTimeout > 0) {
+      sessionTimeout = Math.min(defaultTimeout, userDefTimeout);
+    } else {
+      sessionTimeout = Math.max(defaultTimeout, userDefTimeout);
+    }
+    webUserConnection.getSession().setSessionOption(MY_TIMEOUT, String.valueOf(sessionTimeout));
+    */
+
     // Submit user query to Drillbit work queue.
     final QueryId queryId = workManager.getUserWorker().submitWork(webUserConnection, runQuery);
 
