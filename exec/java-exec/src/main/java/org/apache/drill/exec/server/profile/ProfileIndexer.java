@@ -60,7 +60,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ProfileIndexer {
   private static final Logger logger = LoggerFactory.getLogger(ProfileIndexer.class);
-  private static final String lockPathString = "/profileManager";
+  private static final String lockPathString = "/profileIndexer";
   private static final int DRILL_SYS_FILE_EXT_SIZE = DRILL_SYS_FILE_SUFFIX.length();
 
   private final ZKClusterCoordinator zkCoord;
@@ -76,6 +76,8 @@ public class ProfileIndexer {
   private PersistentStoreConfig<QueryProfile> pStoreConfig;
   private LocalPersistentStore<QueryProfile> completedProfileStore;
   private Stopwatch indexWatch;
+  private int indexedCount;
+  private int currentProfileCount;
 
 
   /**
@@ -92,7 +94,8 @@ public class ProfileIndexer {
     }
 
     //Use Zookeeper for coordinated management
-    if (this.useZkCoordinatedManagement = isFileSysDistributed(fs)) {
+    final List<String> supportedFS = drillConfig.getStringList(ExecConstants.PROFILES_STORE_INDEX_SUPPORTED_FS);
+    if (this.useZkCoordinatedManagement = supportedFS.contains(fs.getScheme())) {
       this.zkCoord = (ZKClusterCoordinator) coord;
     } else {
       this.zkCoord = null;
@@ -108,83 +111,73 @@ public class ProfileIndexer {
     this.profiles = new ProfileSet(indexingRate);
     this.indexWatch = Stopwatch.createUnstarted();
     this.sysFileSuffixFilter = new DrillSysFilePathFilter();
-    //TODO / FIXME (read from config?)
-    String indexPathPattern =
-        drillConfig.getString(ExecConstants.PROFILES_STORE_INDEX_FORMAT);
-//        "yyyy/MM/dd"; //TODO ExecConstants
+    String indexPathPattern = drillConfig.getString(ExecConstants.PROFILES_STORE_INDEX_FORMAT);
     this.indexedPathFormat = new SimpleDateFormat(indexPathPattern);
-    logger.info("Index Format : {}", indexedPathFormat.toPattern());
+    logger.info("Organizing any existing unindexed profiles");
   }
 
 
-  //Synchronized Profile
+  /**
+   * Index profiles
+   */
   public void indexProfiles() {
-    /**
-     * 1. Get ZK Lock
-     * 2. Build list of files
-     * 3. Retain latest (archiving them first ensures they are accessed fastest as well)
-     * 4. Index them
-     */
+    this.indexWatch.start();
 
+    // Acquire lock IFF required
     if (useZkCoordinatedManagement) {
-      // TODO Acquire lock IFF required
       DistributedSemaphore indexerMutex = new ZkDistributedSemaphore(zkCoord.getCurator(), lockPathString, 1);
       try (DistributedLease lease = indexerMutex.acquire(0, TimeUnit.SECONDS)) {
         if (lease != null) {
           listAndIndex();
         } else {
-          logger.info("Couldn't get a lease acquisition");
+          logger.debug("Couldn't get a lease acquisition");
         }
       } catch (Exception e) {
         //DoNothing since lease acquisition failed
-        logger.info("Exception during lease-acquisition:: {}", e);
+        logger.error("Exception during lease-acquisition:: {}", e);
       }
     } else {
       try {
         listAndIndex();
       } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
+        logger.error("Failed to index: {}", e);
       }
     }
+    logger.info("Successfully indexed {} of {} profiles during startup in {} seconds", indexedCount, currentProfileCount, this.indexWatch.stop().elapsed(TimeUnit.SECONDS));
   }
 
 
   //Lists and Indexes the latest profiles
   private void listAndIndex() throws IOException {
-    int currentProfileCount = listForArchiving(), indexedCount = 0;
-    //TODO
+    currentProfileCount = listForArchiving();
+    indexedCount = 0;
     logger.info("Found {} profiles that need to be indexed. Will attempt to index {} profiles", currentProfileCount,
         (currentProfileCount > this.indexingRate) ? this.indexingRate : currentProfileCount);
 
+    // Track MRU index paths
     Map<String, Path> mruIndexPath = new HashMap<>();
-
     if (currentProfileCount > 0) {
       while (!this.profiles.isEmpty()) {
         String profileToIndex = profiles.removeYoungest() + DRILL_SYS_FILE_SUFFIX;
         Path srcPath = new Path(basePath, profileToIndex);
         long profileStartTime = getProfileStart(srcPath);
         if (profileStartTime < 0) {
-          logger.info("Will skip indexing {}", srcPath);
+          logger.debug("Will skip indexing {}", srcPath);
           continue;
         }
         String indexPath = indexedPathFormat.format(new Date(profileStartTime));
-        logger.info("{}  <--<  {} [{}]", indexPath, srcPath, profileStartTime);
-        //Check if exists
+        //Check if dest dir exists
         Path indexDestPath = null;
         if (!mruIndexPath.containsKey(indexPath)) {
           indexDestPath = new Path(basePath, indexPath);
-          logger.info("Check existence of {} dir", indexDestPath);
           if (!fs.isDirectory(indexDestPath)) {
             // Build dir
             if (fs.mkdirs(indexDestPath)) {
               mruIndexPath.put(indexPath, indexDestPath);
             } else {
-              //Creation failed. Did someone else create? Check before throwing error
+              //Creation failed. Did someone else create?
               if (fs.isDirectory(indexDestPath)) {
                 mruIndexPath.put(indexPath, indexDestPath);
-              } else {
-                //TODO Throw Error (N times before exiting?)
               }
             }
           } else {
@@ -198,7 +191,6 @@ public class ProfileIndexer {
         boolean renameStatus = false;
         if (indexDestPath != null) {
           Path destPath = new Path(indexDestPath, profileToIndex);
-          logger.info("MOVE {} ---> {}", srcPath.toUri(), destPath.toUri());
           renameStatus = DrillFileSystemUtil.rename(fs, srcPath, destPath);
           if (renameStatus) {
             indexedCount++;
@@ -211,11 +203,9 @@ public class ProfileIndexer {
         }
       }
     }
-
-    logger.info("Successfully indexed {} profiles during startup", indexedCount);
   }
 
-  //Extracts the profile's start time
+  // Deserialized and extract the profile's start time
   private long getProfileStart(Path srcPath) {
     try (InputStream is = fs.open(srcPath)) {
       QueryProfile profile = pStoreConfig.getSerializer().deserialize(IOUtils.toByteArray(is));
@@ -223,31 +213,27 @@ public class ProfileIndexer {
     } catch (IOException e) {
       logger.info("Unable to deserialize {}\n---{}====", srcPath, e.getMessage()); //Illegal character ((CTRL-CHAR, code 0)): only regular white space (\r, \n, \t) is allowed between tokens       at [Source: [B@f76ca5b; line: 1, column: 65538]
       logger.info("deserialization RCA==> \n {}", ExceptionUtils.getRootCause(e));
-      //DontNeedThis: throw new RuntimeException("Unable TO deSerialize \"" + srcPath, ExceptionUtils.getRootCause(e));
     }
     return Long.MIN_VALUE;
   }
 
   // List all profiles in store's root and identify potential candidates for archiving
   private int listForArchiving() throws IOException {
-    List<FileStatus> fileStatuses = DrillFileSystemUtil.listFiles(fs, basePath, false, //Not performing recursive search of profiles
-        sysFileSuffixFilter
-        );
+    // Not performing recursive search of profiles
+    List<FileStatus> fileStatuses = DrillFileSystemUtil.listFiles(fs, basePath, false, sysFileSuffixFilter );
 
-    //Populating cache with profiles
     int numProfilesInStore = 0;
-
     for (FileStatus stat : fileStatuses) {
       String profileName = stat.getPath().getName();
       //Strip extension and store only query ID
-      profiles.add(profileName.substring(0, /*TODO make it a constant*/profileName.length() - DRILL_SYS_FILE_EXT_SIZE), false);
+      profiles.add(profileName.substring(0, profileName.length() - DRILL_SYS_FILE_EXT_SIZE), false);
       numProfilesInStore++;
     }
 
     return numProfilesInStore;
   }
 
-  //Infers File System of Local Store
+  // Infers File System of Local Store
   private DrillFileSystem inferFileSystem(DrillConfig drillConfig) throws IOException {
     boolean hasZkBlobRoot = drillConfig.hasPath(ZookeeperPersistentStoreProvider.DRILL_EXEC_SYS_STORE_PROVIDER_ZK_BLOBROOT);
     final Path blobRoot = hasZkBlobRoot ?
@@ -257,13 +243,4 @@ public class ProfileIndexer {
     return LocalPersistentStore.getFileSystem(drillConfig, blobRoot);
   }
 
-  //Check if distributed FS
-  private boolean isFileSysDistributed(DrillFileSystem fileSystem) {
-    final List<String> supportedFS = drillConfig.getStringList(ExecConstants.PROFILES_STORE_INDEX_SUPPORTED_FS);
-    logger.info("{} ? --> {} ", fs.getScheme(), supportedFS.toString());
-    if (supportedFS.contains(fileSystem.getScheme())) {
-      return true;
-    }
-    return false;
-  }
 }

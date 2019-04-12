@@ -245,7 +245,6 @@ public class Drillbit implements AutoCloseable {
     if (queryProfileStore instanceof LocalPersistentStore
         && context.getConfig().getBoolean(ExecConstants.PROFILES_STORE_INDEX_ENABLED)) {
       ProfileIndexer profileIndexer = new ProfileIndexer(coord, drillbitContext);
-      logger.info("Organizing any existing unindexed profiles");
       profileIndexer.indexProfiles();
     }
 

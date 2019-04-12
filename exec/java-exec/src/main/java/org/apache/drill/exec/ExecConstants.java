@@ -238,9 +238,9 @@ public final class ExecConstants {
   public static final String PROFILES_STORE_CAPACITY = "drill.exec.profiles.store.capacity";
   public static final String PROFILES_STORE_CACHE_SIZE = "drill.exec.profiles.store.cache.size";
   public static final String PROFILES_STORE_INDEX_ENABLED = "drill.exec.profiles.store.index.enabled";
+  public static final String PROFILES_STORE_INDEX_FORMAT = "drill.exec.profiles.store.index.format";
   public static final String PROFILES_STORE_INDEX_MAX = "drill.exec.profiles.store.index.max";
   public static final String PROFILES_STORE_INDEX_SUPPORTED_FS = "drill.exec.profiles.store.index.supported.fs";
-  public static final String PROFILES_STORE_INDEX_FORMAT = "drill.exec.profiles.store.index.format";
   public static final String IMPERSONATION_ENABLED = "drill.exec.impersonation.enabled";
   public static final String IMPERSONATION_MAX_CHAINED_USER_HOPS = "drill.exec.impersonation.max_chained_user_hops";
   public static final String AUTHENTICATION_MECHANISMS = "drill.exec.security.auth.mechanisms";
@@ -1021,4 +1021,5 @@ public final class ExecConstants {
   public static final String QUERY_MAX_ROWS = "exec.query.max_rows";
   public static final RangeLongValidator QUERY_MAX_ROWS_VALIDATOR = new RangeLongValidator(QUERY_MAX_ROWS, 0, Integer.MAX_VALUE,
       new OptionDescription("The maximum number of rows that the query will return. This can be only set at a SYSTEM level by an admin. (Drill 1.16+)"));
+
 }
