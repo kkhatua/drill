@@ -163,7 +163,7 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
 
   }
 
-  protected Path getBasePath() {
+  public Path getBasePath() {
     return basePath;
   }
 
