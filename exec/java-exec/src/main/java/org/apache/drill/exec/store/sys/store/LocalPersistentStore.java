@@ -258,7 +258,9 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
         //Sorting not required since preSorted //dBug
         logger.info("Post Scan First is {}", files.get(0));
 
-        return Iterables.transform(Iterables.limit(Iterables.skip(files, skip), take), this.stringTransformer).iterator();
+        Iterator<Entry<String, V>> rangeIterator = Iterables.transform(Iterables.limit(Iterables.skip(files, skip), take), this.stringTransformer).iterator();
+        logger.info("CacheSTATS::{}:: {}", (take+skip), this.deserializedVCache.stats().toString());
+        return rangeIterator;
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
