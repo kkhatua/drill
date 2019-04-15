@@ -134,7 +134,8 @@ public class ProfileInfoIterator extends ProfileIterator {
     public ProfileInfo(String query_id, Timestamp time, String foreman, long fragmentCount, String username,
         String queueName, long planDuration, long queueWaitDuration, long executeDuration,
         String state, String query) {
-      this.queryId = query_id;
+      int lastIndex = query_id.lastIndexOf('/');
+      this.queryId = query_id.substring(lastIndex+1);
       this.startTime = time;
       this.foreman = foreman;
       this.fragments = fragmentCount;

@@ -120,7 +120,8 @@ public class ProfileJsonIterator extends ProfileIterator {
     public final String json;
 
     public ProfileJson(String query_id, String profileJson) {
-      this.queryId = query_id;
+      int lastIndex = query_id.lastIndexOf('/');
+      this.queryId = query_id.substring(lastIndex+1);
       this.json = profileJson;
     }
 
