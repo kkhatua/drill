@@ -108,7 +108,7 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
     }
 
     deserializedCacheCapacity = drillConfig.getInt(ExecConstants.PROFILES_STORE_CACHE_SIZE);
-    indexPathPattern = ExecConstants.PROFILES_STORE_INDEX_FORMAT;
+    indexPathPattern = drillConfig.getString(ExecConstants.PROFILES_STORE_INDEX_FORMAT);
     indexedPathFormat = new SimpleDateFormat(indexPathPattern);
 
     this.sysFileSuffixFilter = new PathFilter() {
