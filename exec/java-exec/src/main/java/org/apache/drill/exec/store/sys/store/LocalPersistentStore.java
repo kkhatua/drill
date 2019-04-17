@@ -41,6 +41,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.drill.common.collections.ImmutableEntry;
 import org.apache.drill.common.config.DrillConfig;
+import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.proto.UserBitShared.QueryId;
 import org.apache.drill.exec.proto.UserBitShared.QueryProfile;
 import org.apache.drill.exec.proto.helper.QueryIdHelper;
@@ -65,6 +66,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class LocalPersistentStore<V> extends BasePersistentStore<V> {
+  private static final String STAGING = "/staging";
+
   private static final Logger logger = LoggerFactory.getLogger(LocalPersistentStore.class);
 
   //Provides a threshold above which we report an event's time
@@ -93,20 +96,19 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
 
   private String indexPathPattern;
 
-  public LocalPersistentStore(DrillFileSystem fs, Path base, PersistentStoreConfig<V> config/*, DrillConfig drillConfig*/) {
+  public LocalPersistentStore(DrillFileSystem fs, Path base, PersistentStoreConfig<V> config, DrillConfig drillConfig) {
     this.basePath = new Path(base, config.getName());
     this.config = config;
     this.fs = fs;
     try {
-      mkdirs(getBasePath());
+      //This will create the base path and staging
+      mkdirs(new Path(getBasePath(), STAGING));
     } catch (IOException e) {
       throw new RuntimeException("Failure setting pstore configuration path.");
     }
 
-    //TODO: int cacheCapacity = drillConfig.getInt(ExecConstants.HTTP_MAX_PROFILES);
-    deserializedCacheCapacity = 100; //drillConfig.getInt(ExecConstants.PROFILES_STORE_CACHE_SIZE);
-
-    indexPathPattern = "yyyy/MM/dd"; //TODO ExecConstants
+    deserializedCacheCapacity = drillConfig.getInt(ExecConstants.PROFILES_STORE_CACHE_SIZE);
+    indexPathPattern = ExecConstants.PROFILES_STORE_INDEX_FORMAT;
     indexedPathFormat = new SimpleDateFormat(indexPathPattern);
 
     this.sysFileSuffixFilter = new PathFilter() {
@@ -227,6 +229,7 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
             files.addAll(additions);
 
             //[sodBug]
+//            if (logger.isDebugEnabled()) {
             if (!files.isEmpty()) {
               logger.info("First is {}", files.get(0));
             }
@@ -236,6 +239,7 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
               collectedProfileCount += _pCount;
               logger.info("# profiles added = {} [Total: {} (act) / {} (est)] ", _pCount, files.size(), collectedProfileCount);
             }
+//          }
             //[eodBug]
           }
 
@@ -259,6 +263,7 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
         logger.info("Post Scan First is {}", files.get(0));
 
         Iterator<Entry<String, V>> rangeIterator = Iterables.transform(Iterables.limit(Iterables.skip(files, skip), take), this.stringTransformer).iterator();
+        //TODO:
         logger.info("CacheSTATS::{}:: {}", (take+skip), this.deserializedVCache.stats().toString());
         return rangeIterator;
       } catch (IOException e) {
@@ -266,8 +271,10 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
       }
     }
 
+  //TODO cleanup
   private Path makePath(String name) {
     Preconditions.checkArgument(
+
         //!name.contains("/") &&
         !name.contains(":") &&
         !name.contains(".."));
@@ -294,6 +301,7 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
     }
   }
 
+  //TODO cleanup
   @Override
   public V get(String key) {
     Path actualPath = makePath(key);
@@ -304,7 +312,13 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
         List<String> possibleDirs = getPossiblePaths(key.substring(key.lastIndexOf('/') + 1));
         actualPath = getPathFromPossibleDirList(key, possibleDirs);
         if (actualPath == null) {
-          return null;
+          Path stagedPath = new Path(new Path(getBasePath(), STAGING), key + DRILL_SYS_FILE_SUFFIX);
+          if (fs.exists(stagedPath)) {
+            actualPath = stagedPath;
+            logger.info("Found {} in {}", key, stagedPath);
+          } else {
+            return null;
+          }
         }
       }
     } catch (IOException e) {
@@ -457,9 +471,11 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
       } while (!currDate.after(upperBoundDate));
 
       //[sodBug]
-      for (String possibility : possibleSrcDirs) {
-        logger.info("Possibility :: {}", possibility);
-      }
+//      if (logger.isDebugEnabled()) {
+        for (String possibility : possibleSrcDirs) {
+          logger.info("Possibility :: {}", possibility);
+        }
+//      }
       //[eodBug]
 
       return possibleSrcDirs;
@@ -472,19 +488,21 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
     }
 
   //TODO | FIXME: Guava to Handle RuntimeException by
-  //Deserialize path's contents (leveraged by Guava Cache)
+  // Deserialize path's contents (leveraged by Guava Cache for auto-populating)
   private V deserializeFromFileSystem(String srcPath) {
     final Path path = new Path(srcPath);
     try (InputStream is = fs.open(path)) {
       return config.getSerializer().deserialize(IOUtils.toByteArray(is));
     } catch (IOException e) {
-      logger.info("Unable to deserialize {}\n---{}====", path, e.getMessage()); //Illegal character ((CTRL-CHAR, code 0)): only regular white space (\r, \n, \t) is allowed between tokens       at [Source: [B@f76ca5b; line: 1, column: 65538]
+      // Typical causes:
+      // Illegal character ((CTRL-CHAR, code 0)): only regular white space (\r, \n, \t) is allowed between tokens at [Source: [B@f76ca5b; line: 1, column: 65538]
+      logger.info("Unable to deserialize {}\n---{}====", path, e.getMessage());
       logger.info("deserialization RCA==> \n {}", ExceptionUtils.getRootCause(e));
       throw new RuntimeException("Unable TO deSerialize \"" + path, ExceptionUtils.getRootCause(e));
     }
   }
 
-  //Enumerator
+  // Enumerator
   private enum IncrementType {
     Minute, Hour, Day, Month, Year
   }
