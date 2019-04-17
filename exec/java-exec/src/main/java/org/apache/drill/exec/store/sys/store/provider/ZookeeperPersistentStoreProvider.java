@@ -88,7 +88,7 @@ public class ZookeeperPersistentStoreProvider extends BasePersistentStoreProvide
   public <V> VersionedPersistentStore<V> getOrCreateVersionedStore(final PersistentStoreConfig<V> config) throws StoreException {
     switch(config.getMode()){
       case BLOB_PERSISTENT:
-        return new VersionedDelegatingStore<>(new LocalPersistentStore<>(fs, blobRoot, config));
+        return new VersionedDelegatingStore<>(new LocalPersistentStore<>(fs, blobRoot, config, drillConfig));
       case PERSISTENT:
         final ZookeeperPersistentStore<V> store = new ZookeeperPersistentStore<>(curator, config);
         try {
