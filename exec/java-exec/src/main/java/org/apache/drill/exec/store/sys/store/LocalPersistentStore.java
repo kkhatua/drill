@@ -66,7 +66,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class LocalPersistentStore<V> extends BasePersistentStore<V> {
-  private static final String STAGING = "/staging";
+  private static final String STAGING = "staging";
 
   private static final Logger logger = LoggerFactory.getLogger(LocalPersistentStore.class);
 
