@@ -17,18 +17,19 @@
     limitations under the License.
 
 -->
+<#assign rootDepth = ".">
 <#include "*/generic.ftl">
 <#macro page_head>
-  <script src="/static/js/jquery.form.js"></script>
-  <script src="/static/js/querySubmission.js"></script>
+  <script src='${rootDepth}/static/js/jquery.form.js'></script>
+  <script src='${rootDepth}/static/js/querySubmission.js'></script>
   <!-- Ace Libraries for Syntax Formatting -->
-  <script src="/static/js/ace-code-editor/ace.js" type="text/javascript" charset="utf-8"></script>
-  <!-- Disabled in favour of dynamic: script src="/static/js/ace-code-editor/mode-sql.js" type="text/javascript" charset="utf-8" -->
-  <script src="/dynamic/mode-sql.js" type="text/javascript" charset="utf-8"></script>
-  <script src="/static/js/ace-code-editor/ext-language_tools.js" type="text/javascript" charset="utf-8"></script>
-  <script src="/static/js/ace-code-editor/theme-sqlserver.js" type="text/javascript" charset="utf-8"></script>
-  <script src="/static/js/ace-code-editor/snippets/sql.js" type="text/javascript" charset="utf-8"></script>
-  <script src="/static/js/ace-code-editor/mode-snippets.js" type="text/javascript" charset="utf-8"></script>
+ <script src='${rootDepth}/static/js/ace-code-editor/ace.js' type='text/javascript' charset='utf-8'></script>
+  <!-- Disabled in favour of dynamic:<script src='${rootDepth}/static/js/ace-code-editor/mode-sql.js' type='text/javascript' charset='utf-8' -->
+ <script src='${rootDepth}/dynamic/mode-sql.js' type='text/javascript' charset='utf-8'></script>
+ <script src='${rootDepth}/static/js/ace-code-editor/ext-language_tools.js' type='text/javascript' charset='utf-8'></script>
+ <script src='${rootDepth}/static/js/ace-code-editor/theme-sqlserver.js' type='text/javascript' charset='utf-8'></script>
+ <script src='${rootDepth}/static/js/ace-code-editor/snippets/sql.js' type='text/javascript' charset='utf-8'></script>
+ <script src='${rootDepth}/static/js/ace-code-editor/mode-snippets.js' type='text/javascript' charset='utf-8'></script>
 </#macro>
 
 <#macro page_body>

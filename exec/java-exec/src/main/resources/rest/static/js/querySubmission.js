@@ -91,7 +91,7 @@ function submitQuery() {
               request.setRequestHeader("User-Name", userName);
             }
         },
-        url: "/query",
+        url: makePath("/query"),
         data: $("#queryForm").serializeArray(),
         success: function (response) {
             closePopup();

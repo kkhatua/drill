@@ -17,15 +17,15 @@
     limitations under the License.
 
 -->
-
+<#assign rootDepth = ".">
 <#include "*/generic.ftl">
 <#macro page_head>
-  <script src="/static/js/jquery.form.js"></script>
+  <script src="${rootDepth}/static/js/jquery.form.js"></script>
 
   <!-- Ace Libraries for Syntax Formatting -->
-  <script src="/static/js/ace-code-editor/ace.js" type="text/javascript" charset="utf-8"></script>
-  <script src="/static/js/ace-code-editor/theme-eclipse.js" type="text/javascript" charset="utf-8"></script>
-  <script src="/static/js/serverMessage.js"></script>
+  <script src="${rootDepth}/static/js/ace-code-editor/ace.js" type="text/javascript" charset="utf-8"></script>
+  <script src="${rootDepth}/static/js/ace-code-editor/theme-eclipse.js" type="text/javascript" charset="utf-8"></script>
+  <script src="${rootDepth}/static/js/serverMessage.js"></script>
 </#macro>
 
 <#macro page_body>
@@ -63,6 +63,7 @@
                 ${plugin.getName()}
               </td>
               <td style="border:none;">
+                <button type="button" class="btn btn-primary" onclick="location.href=makePath('/storage/${plugin.getName()}');">
                 <button type="button" class="btn btn-primary" onclick="doUpdate('${plugin.getName()}')">
                   Update
                 </button>
@@ -92,6 +93,7 @@
                 ${plugin.getName()}
               </td>
               <td style="border:none;">
+                <button type="button" class="btn btn-primary" onclick="location.href=makePath('/storage/${plugin.getName()}')">
                 <button type="button" class="btn btn-primary" onclick="doUpdate('${plugin.getName()}')">
                   Update
                 </button>
@@ -178,7 +180,7 @@
         </div>
         <div class="modal-body">
 
-          <form id="createForm" role="form" action="/storage/create_update" method="POST">
+          <form id="createForm" role="form" action="./storage/create_update" method="POST">
             <input type="text" class="form-control" name="name" placeholder="Storage Name">
             <h3>Configuration</h3>
             <div class="form-group">
@@ -202,6 +204,8 @@
 
   <script>
     function doEnable(name, flag) {
+      if (flag || confirm(name + ' plugin will be disabled')) {
+        $.get(makePath("/storage/" + name + "/enable/" + flag), function() {
       if (flag) {
         proceed();
       } else {
@@ -280,8 +284,9 @@
           } else if (modal.find('#disabled').is(":checked")) {
             pluginGroup = 'disabled';
           }
-          url = '/storage/' + pluginGroup + '/plugins/export/' + format;
+          url = makePath('/storage/' + pluginGroup + '/plugins/export/' + format);
         } else {
+          url = makePath('/storage/' + exportInstance + '/export/' + format);
           url = '/storage/' + encodeURIComponent(exportInstance) + '/export/' + format;
         }
         window.open(url);

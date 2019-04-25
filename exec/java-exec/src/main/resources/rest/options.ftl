@@ -17,10 +17,19 @@
     limitations under the License.
 
 -->
+<#assign rootDepth = ".">
 <#include "*/generic.ftl">
 <#macro page_head>
-    <script type="text/javascript" language="javascript"  src="/static/js/jquery.dataTables-1.10.16.min.js"> </script>
-    <script type="text/javascript" language="javascript" src="/static/js/dataTables.colVis-1.1.0.min.js"></script>
+    <script src='${rootDepth}/static/js/jquery.dataTables-1.10.16.min.js' type='text/javascript' language='javascript'></script>
+    <script src='${rootDepth}/static/js/dataTables.colVis-1.1.0.min.js' type='text/javascript' language='javascript' ></script>
+
+    // List of Option Descriptions
+    <script src='${rootDepth}/dynamic/options.describe.js'></script>
+    <link href='${rootDepth}/static/css/dataTables.colVis-1.1.0.min.css' rel='stylesheet'>
+    <link href='${rootDepth}/static/css/dataTables.jqueryui.css' rel='stylesheet'>
+    <link href='${rootDepth}/static/css/jquery-ui-1.10.3.min.css' rel='stylesheet'>
+    <link href='${rootDepth}/static/css/drill-dataTables.sortable.css' rel='stylesheet'>
+
     <script>
     //Alter System Values
     function alterSysOption(optionName, optionValue, optionKind) {
@@ -33,7 +42,7 @@
         } else { //Apply filter for updated field
             redirectHref = redirectHref + "?filter=" + optionName;
         }
-        $.post("/option/"+optionName, {kind: optionKind, name: optionName, value: optionValue}, function () {
+        $.post(makePath("/option/"+optionName), {kind: optionKind, name: optionName, value: optionValue}, function () {
             //Remove existing filters
             location.href=redirectHref;
         });
@@ -62,12 +71,6 @@
         alterSysOption(optionRawName, optionValue, optionKind);
     }
     </script>
-    <!-- List of Option Descriptions -->
-    <script src="/dynamic/options.describe.js"></script>
-    <link href="/static/css/dataTables.colVis-1.1.0.min.css" rel="stylesheet">
-    <link href="/static/css/dataTables.jqueryui.css" rel="stylesheet">
-    <link href="/static/css/jquery-ui-1.10.3.min.css" rel="stylesheet">
-    <link href="/static/css/drill-dataTables.sortable.css" rel="stylesheet">
 </#macro>
 
 <#macro page_body>

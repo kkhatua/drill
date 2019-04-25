@@ -17,6 +17,7 @@
     limitations under the License.
 
 -->
+<#assign rootDepth = ".">
 <#include "*/generic.ftl">
 <#macro page_head>
 </#macro>
@@ -24,10 +25,10 @@
 <#macro page_body>
   <div class="page-header"></div>
   <div align="center" class="table-responsive">
-    <form role="form" name="input" action="/j_security_check" method="POST">
+    <form role="form" name="input" action="${rootDepth}/j_security_check" method="POST">
       <fieldset>
         <div class="form-group">
-          <img src="/static/img/apache-drill-logo.png" alt="Apache Drill Logo">
+          <img src="${rootDepth}/static/img/apache-drill-logo.png" alt="Apache Drill Logo">
           <#if model??>
             <p style="color:red">${model}</p></br>
           </#if>

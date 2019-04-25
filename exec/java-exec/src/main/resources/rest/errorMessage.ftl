@@ -17,6 +17,7 @@
     limitations under the License.
 
 -->
+<#assign rootDepth = ".">
 <#include "*/generic.ftl">
 <#macro page_head>
 </#macro>

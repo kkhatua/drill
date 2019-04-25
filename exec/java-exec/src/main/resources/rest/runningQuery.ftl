@@ -28,13 +28,13 @@
         <div class="modal-body" style="line-height:3">
             <table border="0px" width="100%"><tr>
                 <td align="center" style="font-size:125%">Waiting for results... (This may take some time) <br>Please don't close this window</td>
-                <td align="right"><img src="/static/img/loader.gif"></td>
+                <td align="right"><script>document.write("<img src='"+makePath('/static/img/loader.gif')+"'></td>");</script>
             </tr></table>
         </div>
         <div class="modal-footer">
         <table border="0px" width="100%"><tr>
         <td align="left" id="stopWatch">Elapsed Time: 00:00</td><td align="right">
-          <button type="button" class="btn btn-default" title="Check profiles in new tab" onclick="window.open(&#39;/profiles&#39;)">Check Status <span class="glyphicon glyphicon-new-window"></span></button>
+          <button type="button" class="btn btn-default" title="Check profiles in new tab" onclick="window.open(makePath('/profiles'))">Check Status <span class="glyphicon glyphicon-new-window"></span></button>
           </td>
           </tr>
           </table>

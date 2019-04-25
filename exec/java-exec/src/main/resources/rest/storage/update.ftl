@@ -17,28 +17,28 @@
     limitations under the License.
 
 -->
-
+<#assign rootDepth = "..">
 <#include "*/generic.ftl">
 <#macro page_head>
-  <script src="/static/js/jquery.form.js"></script>
+  <script src="${rootDepth}/static/js/jquery.form.js"></script>
   <!-- Ace Libraries for Syntax Formatting -->
-  <script src="/static/js/ace-code-editor/ace.js" type="text/javascript" charset="utf-8"></script>
-  <script src="/static/js/ace-code-editor/theme-eclipse.js" type="text/javascript" charset="utf-8"></script>
-  <script src="/static/js/serverMessage.js"></script>
+  <script src="${rootDepth}/static/js/ace-code-editor/ace.js" type="text/javascript" charset="utf-8"></script>
+  <script src="${rootDepth}/static/js/ace-code-editor/theme-eclipse.js" type="text/javascript" charset="utf-8"></script>
+  <script src="${rootDepth}/static/js/serverMessage.js"></script>
 </#macro>
 
 <#macro page_body>
   <div class="page-header">
   </div>
   <h3>Configuration</h3>
-  <form id="updateForm" role="form" action="/storage/create_update" method="POST">
+  <form id="updateForm" role="form" action="${rootDepth}/storage/create_update" method="POST">
     <input type="hidden" name="name" value="${model.getName()}" />
     <div class="form-group">
       <div id="editor" class="form-control"></div>
       <textarea class="form-control" id="config" name="config" data-editor="json" style="display: none;" >
       </textarea>
     </div>
-    <a class="btn btn-default" href="/storage">Back</a>
+    <a class="btn btn-default" onclick="location.href=makePath('/storage');">Back</a>
     <button class="btn btn-default" type="submit" onclick="doUpdate();">Update</button>
     <#if model.enabled()>
       <a id="enabled" class="btn btn-default">Disable</a>
@@ -108,6 +108,7 @@
       textarea.val(editor.getSession().getValue());
     });
 
+    $.get(makePath("/storage/${model.getName()}.json"), function(data) {
     $.get("/storage/" + encodeURIComponent("${model.getName()}") + ".json", function(data) {
       $("#config").val(JSON.stringify(data.config, null, 2));
       editor.getSession().setValue( JSON.stringify(data.config, null, 2) );
@@ -115,6 +116,10 @@
 
 
     $("#enabled").click(function() {
+      $.get(makePath("/storage/${model.getName()}/enable/<#if model.enabled()>false<#else>true</#if>"), function(data) {
+        $("#message").removeClass("hidden").text(data.result).alert();
+        setTimeout(function() { location.reload(); }, 800);
+      });
       const enabled = ${model.enabled()?c};
       if (enabled) {
         showConfirmationDialog('"${model.getName()}"' + ' plugin will be disabled. Proceed?', proceed);
@@ -131,12 +136,16 @@
 
     function doUpdate() {
       $("#updateForm").ajaxForm({
+        url: makePath('/storage/create_update'),
         dataType: 'json',
         success: serverMessage
       });
     }
 
     function deleteFunction() {
+      if (confirm("Are you sure?")) {
+        $.get(makePath("/storage/${model.getName()}/delete"), serverMessage);
+      }
       showConfirmationDialog('"${model.getName()}"' + ' plugin will be deleted. Proceed?', function() {
         $.get("/storage/" + encodeURIComponent("${model.getName()}") + "/delete", serverMessage);
       });
@@ -157,6 +166,7 @@
           format = 'conf';
         }
 
+        let url = makePath('/storage/' + exportInstance + '/export/' + format);
         let url = '/storage/' + encodeURIComponent(exportInstance) + '/export/' + format;
         window.open(url);
       });

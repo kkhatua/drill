@@ -5,7 +5,8 @@ table.sortable thead .sorting,.sorting_asc,.sorting_desc {
   cursor: pointer;
 }
 /* Sorting Symbols */
-table.sortable thead .sorting { background-image: url("/static/img/black-unsorted.gif"); }
-table.sortable thead .sorting_asc { background-image: url("/static/img/black-asc.gif"); }
-table.sortable thead .sorting_desc { background-image: url("/static/img/black-desc.gif"); }
+/* Climb out 2 levels since referenced by /static/css/drill-dataTables.sortable.css */
+table.sortable thead .sorting { background-image: url("../../static/img/black-unsorted.gif"); }
+table.sortable thead .sorting_asc { background-image: url("../../static/img/black-asc.gif"); }
+table.sortable thead .sorting_desc { background-image: url("../../static/img/black-desc.gif"); }
 

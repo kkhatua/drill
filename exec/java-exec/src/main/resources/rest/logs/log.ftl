@@ -17,6 +17,7 @@
     limitations under the License.
 
 -->
+<#assign rootDepth = "../..">
 <#include "*/generic.ftl">
 <#macro page_head>
 </#macro>
@@ -26,7 +27,7 @@
 </div>
 <h3>${model.getName()} <span class="badge alert-info">(last ${model.getMaxLines()} lines)</span></h3>
 <p>
-    <a href="/log/${model.getName()}/download">Download Full Log</a>
+    <a href='${rootDepth}/log/${model.getName()}/download'>Download Full Log</a>
 </p>
     <#if (model.getLines()?size > 0)>
     <pre>

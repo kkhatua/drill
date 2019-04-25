@@ -17,23 +17,25 @@
     limitations under the License.
 
 -->
+<#assign rootDepth = "..">
 <#include "*/generic.ftl">
 <#macro page_head>
-<script src="/static/js/d3.v3.js"></script>
-<script src="/static/js/dagre-d3.min.js"></script>
-<script src="/static/js/graph.js"></script>
-<script src="/static/js/jquery.dataTables-1.10.16.min.js"></script>
-<script src="/static/js/jquery.form.js"></script>
-<script src="/static/js/querySubmission.js"></script>
-<!-- Ace Libraries for Syntax Formatting -->
-<script src="/static/js/ace-code-editor/ace.js" type="text/javascript" charset="utf-8"></script>
-<!-- Disabled in favour of dynamic: script src="/static/js/ace-code-editor/mode-sql.js" type="text/javascript" charset="utf-8" -->
-<script src="/dynamic/mode-sql.js" type="text/javascript" charset="utf-8"></script>
-<script src="/static/js/ace-code-editor/ext-language_tools.js" type="text/javascript" charset="utf-8"></script>
-<script src="/static/js/ace-code-editor/theme-sqlserver.js" type="text/javascript" charset="utf-8"></script>
-<script src="/static/js/ace-code-editor/snippets/sql.js" type="text/javascript" charset="utf-8"></script>
-<script src="/static/js/ace-code-editor/mode-snippets.js" type="text/javascript" charset="utf-8"></script>
-<link href="/static/css/drill-dataTables.sortable.css" rel="stylesheet">
+    <script src='${rootDepth}/static/js/d3.v3.js'></script>
+    <script src='${rootDepth}/static/js/dagre-d3.min.js'></script>
+    <script src='${rootDepth}/static/js/graph.js'></script>
+    <script src='${rootDepth}/static/js/jquery.dataTables-1.10.16.min.js'></script>
+    <script src='${rootDepth}/static/js/jquery.form.js'></script>
+    <script src='${rootDepth}/static/js/querySubmission.js'></script>
+    <!-- Ace Libraries for Syntax Formatting -->
+    <script src='${rootDepth}/static/js/ace-code-editor/ace.js' type='text/javascript' charset='utf-8'></script>
+    <!-- Disabled in favour of dynamic: script src='${rootDepth}/static/js/ace-code-editor/mode-sql.js')+"' type='text/javascript' charset='utf-8' -->
+    <script src='${rootDepth}/dynamic/mode-sql.js' type='text/javascript' charset='utf-8'></script>
+    <script src='${rootDepth}/static/js/ace-code-editor/ext-language_tools.js' type='text/javascript' charset='utf-8'></script>
+    <script src='${rootDepth}/static/js/ace-code-editor/theme-sqlserver.js' type='text/javascript' charset='utf-8'></script>
+    <script src='${rootDepth}/static/js/ace-code-editor/snippets/sql.js' type='text/javascript' charset='utf-8'></script>
+    <script src='${rootDepth}/static/js/ace-code-editor/mode-snippets.js' type='text/javascript' charset='utf-8'></script>
+    <link href='${rootDepth}/static/css/drill-dataTables.sortable.css')+"' rel='stylesheet'>");
+  </script>
 
 <script>
     var globalconfig = {
@@ -94,7 +96,7 @@
     //Cancel query & show cancellation status
     function cancelQuery() {
       document.getElementById("cancelTitle").innerHTML = "Drillbit on " + location.hostname + " says";
-      $.get("/profiles/cancel/"+globalconfig.queryid, function(data, status){/*Not Tracking Response*/});
+      $.get(makePath("/profiles/cancel/"+globalconfig.queryid), function(data, status){/*Not Tracking Response*/});
       //Show PopUp Modal
       $("#queryCancelModal").modal("show");
     };
@@ -191,7 +193,6 @@
         </div>
       </form>
         </p>
-       <#include "*/runningQuery.ftl">
     </div>
     <#if model.hasError()>
       <div id="query-error" class="tab-pane fade">
@@ -496,7 +497,7 @@
         var i;
         for (i = 0; i < tagElemList.length; i++) {
             var content = tagElemList[i].innerHTML;
-            tagElemList[i].innerHTML = "<img src='/static/img/turtle.png' alt='slow'> "+content;
+            tagElemList[i].innerHTML = "<img src='"+makePath("/static/img/turtle.png")+"' alt='slow'> "+content;
         }
     }
 

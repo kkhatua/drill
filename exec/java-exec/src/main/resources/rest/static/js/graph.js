@@ -340,7 +340,7 @@ $(window).on('load',(function () {
         $.ajax({
             type: "GET",
             dataType: "json",
-            url: "/profiles/" + queryid + ".json",
+            url: makePath("/profiles/" + queryid + ".json"),
             success: callback,
             error: function (x, y, z) {
                 console.log(x);

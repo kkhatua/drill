@@ -17,13 +17,14 @@
     limitations under the License.
 
 -->
+<#assign rootDepth = ".">
 <#include "*/generic.ftl">
 <#macro page_head>
-    <script type="text/javascript" language="javascript"  src="../static/js/jquery.dataTables-1.10.0.min.js"> </script>
-    <script type="text/javascript" language="javascript" src="../static/js/dataTables.colVis-1.1.0.min.js"></script>
-    <link href="/static/css/dataTables.colVis-1.1.0.min.css" rel="stylesheet">
-    <link href="/static/css/dataTables.jqueryui.css" rel="stylesheet">
-    <link href="/static/css/jquery-ui-1.10.3.min.css" rel="stylesheet">
+    <script src='${rootDepth}/static/js/jquery.dataTables-1.10.0.min.js' type='text/javascript' language='javascript'></script>
+    <script src='${rootDepth}/static/js/dataTables.colVis-1.1.0.min.js' type='text/javascript' language='javascript' ></script>
+    <link href='${rootDepth}/static/css/dataTables.colVis-1.1.0.min.css' rel='stylesheet'>
+    <link href='${rootDepth}/static/css/dataTables.jqueryui.css' rel='stylesheet'>
+    <link href='${rootDepth}/static/css/jquery-ui-1.10.3.min.css' rel='stylesheet'>
 </#macro>
 
 <#macro page_body>
@@ -100,7 +101,7 @@
 
     //Pop out profile (needed to avoid losing query results)
     function popOutProfile(queryId) {
-      var profileUrl = location.protocol+'//'+ location.host+'/profiles/'+queryId;
+      var profileUrl = makePath('/profiles/'+queryId);
       var tgtWindow = '_blank';
       window.open(profileUrl, tgtWindow);
     }

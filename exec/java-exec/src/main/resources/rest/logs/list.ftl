@@ -17,6 +17,7 @@
     limitations under the License.
 
 -->
+<#assign rootDepth = ".">
 <#include "*/generic.ftl">
 <#macro page_head>
 </#macro>
@@ -37,7 +38,7 @@
             <#list model as log>
             <tr>
                 <td>
-                    <a href="/log/${log.getName()}/content">
+                    <a onclick="location.href=makePath('/log/${log.getName()}/content');" style="cursor:pointer;">
                         <div style="height:100%;width:100%;white-space:pre-line">${log.getName()}</div>
                     </a>
                 </td>

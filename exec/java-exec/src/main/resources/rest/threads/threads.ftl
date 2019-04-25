@@ -17,6 +17,7 @@
     limitations under the License.
 
 -->
+<#assign rootDepth = ".">
 <#include "*/generic.ftl">
 <#macro page_head>
 </#macro>
@@ -34,7 +35,7 @@
   </div>
   </div>
   <script>
-    var statusUrl = location.protocol + "//" + location.host + "/status/threads";
+    var statusUrl = makePath("/status/threads");
     var refreshInterval = 3;
     document.getElementById('refreshTimeLabel').innerHTML = refreshInterval+" sec"; 
     var update = function() {

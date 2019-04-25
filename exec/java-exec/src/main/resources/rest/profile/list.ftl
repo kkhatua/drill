@@ -17,11 +17,12 @@
     limitations under the License.
 
 -->
+<#assign rootDepth = ".">
 <#include "*/generic.ftl">
 <#macro page_head>
 
-<script src="/static/js/jquery.dataTables-1.10.16.min.js"></script>
-<link href="/static/css/drill-dataTables.sortable.css" rel="stylesheet">
+<script src="${rootDepth}/static/js/jquery.dataTables-1.10.16.min.js"></script>
+<link href="${rootDepth}/static/css/drill-dataTables.sortable.css" rel="stylesheet">
 <script>
     $(document).ready(function() {
       $.each(["running","completed"], function(i, key) {
@@ -75,7 +76,7 @@
         for(var i=0; i < checkedCount; i++) {
             let queryToCancel = checkedBoxes[i].value;
             //Asynchronously cancel the query
-            $.get("/profiles/cancel/" + queryToCancel, function(data, status){
+            $.get(makePath("/profiles/cancel/" + queryToCancel), function(data, status){
                 /*Not Tracking Response*/
             });
         }
@@ -168,13 +169,21 @@
       }
       return true;
     }
+
+    // Reload profiles
+    function reloadProfiles() {
+	  if (checkMaxFetch()) {
+        var maxFetch = document.forms["profileFetch"]["max"].value;
+        location.href=makePath("/profiles?max="+maxFetch)
+	  }
+	}
     </script>
     <tr>
       <td><h3>Completed Queries</h3></td>
       <td align="right">
         <form name="profileFetch" action="/profiles" onsubmit="return checkMaxFetch();" method="get"><span title="Max number of profiles to load">Loaded <b>${model.getFinishedQueries()?size}</b> profiles </span>
         <input id="fetchMax" type="text" size="5" name="max" value="" style="text-align: right" />
-        <input type="submit" value="Reload"/>
+        <button class="btn btn-default" type="button" onclick="reloadProfiles();">Reload</button>
       </form></td>
     </tr></table>
     <!-- Placed after textbox to allow for DOM to contain "fetchMax" element -->
@@ -219,7 +228,7 @@
                 <td data-order='${query.getStartTime()}'>${query.getTime()}</td>
                 <td>${query.getUser()}</td>
                 <td>
-                    <a href="/profiles/${query.getQueryId()}">
+                    <a href="${rootDepth}/profiles/${query.getQueryId()}">
                         <div style="height:100%;width:100%;white-space:pre-line">${query.getQuery()}</div>
                     </a>
                 </td>

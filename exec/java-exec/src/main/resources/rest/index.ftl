@@ -17,6 +17,7 @@
     limitations under the License.
 
 -->
+<#assign rootDepth = ".">
 <#include "*/generic.ftl">
 
 <#-- Format comma-delimited string-->
@@ -240,7 +241,7 @@
       function getRefreshTime() {
           $.ajax({
               type: 'GET',
-              url: '/gracePeriod',
+              url: makePath('/gracePeriod'),
               dataType: "json",
               complete: function (data) {
                   let gracePeriod = data.responseJSON["gracePeriod"];
@@ -256,7 +257,7 @@
       function reloadStatus () {
           let result = $.ajax({
                       type: 'GET',
-                      url: '/state',
+                      url: makePath('/state'),
                       dataType: "json",
                       complete: function(data) {
                             fillStatus(data,size);

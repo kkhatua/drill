@@ -17,6 +17,7 @@
     limitations under the License.
 
 -->
+<#assign rootDepth = ".">
 <#include "*/generic.ftl">
 <#macro page_head>
 </#macro>
@@ -27,10 +28,10 @@
   <div class="container container-table">
     <div align="center" class="table-responsive">
       <#if model?? && model.isFormEnabled()>
-        <a href ="/login" class="btn btn-primary"> Login using FORM AUTHENTICATION </a>
+        <a onclick="location.href=makePath('/login');" style="cursor:pointer;" class="btn btn-primary"> Login using FORM AUTHENTICATION </a>
       </#if>
       <#if model?? && model.isSpnegoEnabled()>
-        <a href = "/spnegoLogin" class="btn btn-primary"> Login using SPNEGO </a>
+        <a onclick="location.href=makePath('/spnegoLogin');" style="cursor:pointer;" class="btn btn-primary"> Login using SPNEGO </a>
       </#if>
       <#if model?? && model.getError()??>
         <p style="color:red">${model.getError()}</p></br>
