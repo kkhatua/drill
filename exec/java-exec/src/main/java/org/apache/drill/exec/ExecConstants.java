@@ -228,6 +228,8 @@ public final class ExecConstants {
   //Control Web UI Resultset
   public static final String HTTP_WEB_CLIENT_RESULTSET_AUTOLIMIT_CHECKED = "drill.exec.http.web.client.resultset.autolimit.checked";
   public static final String HTTP_WEB_CLIENT_RESULTSET_AUTOLIMIT_ROWS = "drill.exec.http.web.client.resultset.autolimit.rows";
+  public static final String HTTP_WEB_CLIENT_RESULTSET_TIMEOUT_CHECKED = "drill.exec.http.web.client.resultset.timeout.checked";
+  public static final String HTTP_WEB_CLIENT_RESULTSET_TIMEOUT_SECONDS = "drill.exec.http.web.client.resultset.timeout.seconds";
   public static final String HTTP_WEB_CLIENT_RESULTSET_ROWS_PER_PAGE_VALUES = "drill.exec.http.web.client.resultset.rowsPerPageValues";
   //Customize filters in options
   public static final String HTTP_WEB_OPTIONS_FILTERS = "drill.exec.http.web.options.filters";
@@ -1016,5 +1018,10 @@ public final class ExecConstants {
   public static final String QUERY_MAX_ROWS = "exec.query.max_rows";
   public static final RangeLongValidator QUERY_MAX_ROWS_VALIDATOR = new RangeLongValidator(QUERY_MAX_ROWS, 0, Integer.MAX_VALUE,
       new OptionDescription("The maximum number of rows that the query will return. This can be only set at a SYSTEM level by an admin. (Drill 1.16+)"));
+
+  //NOTE: Currently server-side default is supported for REST-based APIs only and not JDBC clients
+  public static final String QUERY_TIMEOUT = "exec.query.timeout";
+  public static final RangeLongValidator QUERY_TIMEOUT_VALIDATOR = new RangeLongValidator(QUERY_TIMEOUT, 0, Integer.MAX_VALUE,
+      new OptionDescription("The maximum duration in seconds that a REST-based (e.g. WebUI) query will run. This can be only set at a SYSTEM level by an admin. (Drill 1.17+)"));
 
 }

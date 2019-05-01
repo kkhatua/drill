@@ -79,10 +79,20 @@
       <input class="form-control" type="hidden" id="query" name="query" autofocus/>
     </div>
 
-    <button class="btn btn-default" type="button" onclick="<#if model.isOnlyImpersonationEnabled()>doSubmitQueryWithUserName()<#else>doSubmitQueryWithAutoLimit()</#if>">
+    <button class="btn btn-default" type="button" style="float:left; margin-right:10px" onclick="<#if model.isOnlyImpersonationEnabled()>doSubmitQueryWithUserName()<#else>doSubmitQueryWithChecks()</#if>">
       Submit
     </button>
-    <input type="checkbox" name="forceLimit" value="limit" <#if model.isAutoLimitEnabled()>checked</#if>> Limit results to <input type="text" id="autoLimit" name="autoLimit" min="0" value="${model.getDefaultRowsAutoLimited()?c}" size="6" pattern="[0-9]*"> rows <span class="glyphicon glyphicon-info-sign" title="Limits the number of records retrieved in the query. Ignored if query has a limit already" style="cursor:pointer"></span>
+    <div class="input-group col-xs-2" style="float:left; margin-right:10px; cursor:pointer;" title="Limits the number of records retrieved in the query. Ignored if query has a limit already">
+      <span class="input-group-addon" style="font-size:90%"><input type="checkbox" name="forceLimit" value="limit" <#if model.isAutoLimitEnabled()>checked</#if>> Limit to </span>
+      <input class="form-control" type="text" id="autoLimit" name="autoLimit" min="0" value="${model.getDefaultRowsAutoLimited()?c}" size="6" pattern="[0-9]*"placeholder="maxRows">
+      <span class="input-group-addon" style="font-size:90%">rows</span>
+    </div>
+    <div class="input-group col-xs-2" style="float:left; margin-right:10px; cursor:pointer;" title="Limits duration of the query">
+      <span class="input-group-addon" style="font-size:90%"><input type="checkbox" name="forceTimeout" value="timeout" <#if model.isTimeoutEnabled()>checked</#if>> Timeout</span>
+      <input class="form-control" type="text" id="autoTimeout" name="autoTimeout" min="0" value="${model.getDefaultTimeoutSeconds()?c}" size="6" pattern="[0-9]*"placeholder="maxDuration">
+      <span class="input-group-addon" style="font-size:90%">seconds</span>
+    </div>
+
   </form>
 
   <script>
@@ -130,7 +140,7 @@
             .addEventListener('keydown', function(e) {
       if (!(e.keyCode == 13 && (e.metaKey || e.ctrlKey))) return;
       if (e.target.form) //Submit [Wrapped] Query 
-        <#if model.isOnlyImpersonationEnabled()>doSubmitQueryWithUserName()<#else>doSubmitQueryWithAutoLimit()</#if>;
+        <#if model.isOnlyImpersonationEnabled()>doSubmitQueryWithUserName()<#else>doSubmitQueryWithChecks()</#if>;
     });
   </script>
 </#macro>

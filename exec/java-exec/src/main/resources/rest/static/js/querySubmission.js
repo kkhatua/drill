@@ -48,26 +48,30 @@ function doSubmitQueryWithUserName() {
         return;
     }
     //Wrap and Submit query
-    doSubmitQueryWithAutoLimit();
+    doSubmitQueryWithChecks();
 }
 
 //Perform autoLimit check before submitting (invoked directly if impersonation is not enabled)
-function doSubmitQueryWithAutoLimit() {
+function doSubmitQueryWithChecks() {
+    //[1] Checking for non-empty query
     let origQueryText = $('#query').attr('value');
     if (origQueryText == null || origQueryText.trim().length == 0) {
         populateAndShowAlert("queryMissing", null);
         $("#query").focus();
         return;
     }
-    //Wrap if required
-    let mustWrapWithLimit = $('input[name="forceLimit"]:checked').length > 0;
-    //Clear field when submitting if not mustWrapWithLimit
-    if (!mustWrapWithLimit) {
+
+    //Regex Tester
+    let positiveIntRegex = new RegExp("^[1-9]\\d*$");
+
+    //[2] Checking for valid autoLimit
+    let mustAutoLimit = $('input[name="forceLimit"]:checked').length > 0;
+    //Clear field when submitting if not mustAutoLimit
+    if (!mustAutoLimit) {
       //Wipe out any numeric entry in the field before
       $('#autoLimit').attr('value', '');
     } else {
       let autoLimitValue=document.getElementById('autoLimit').value;
-      let positiveIntRegex = new RegExp("^[1-9]\\d*$");
       let isValidRowCount = positiveIntRegex.test(autoLimitValue.trim());
       if (!isValidRowCount) {
         let alertValues = {'_autoLimitValue_': autoLimitValue.trim() };
@@ -76,7 +80,25 @@ function doSubmitQueryWithAutoLimit() {
         return;
       }
     }
-    //Submit query
+
+    //[3] Checking for valid autoTimeout
+    let mustAutoTimeout = $('input[name="forceTimeout"]:checked').length > 0;
+    //Clear field when submitting if not mustAutoTimeout
+    if (!mustAutoTimeout) {
+      //Wipe out any numeric entry in the field before
+      $('#autoTimeout').attr('value', '');
+    } else {
+      let autoTimeoutValue=document.getElementById('autoTimeout').value;
+      let isValidTimeout = positiveIntRegex.test(autoTimeoutValue.trim());
+      if (!isValidTimeout) {
+        let alertValues = {'_autoTimeoutValue_': autoTimeoutValue.trim() };
+        populateAndShowAlert("invalidTimeout", alertValues);
+        $('#autoTimeout').focus();
+        return;
+      }
+    }
+
+    // Submit query
     submitQuery();
 }
 

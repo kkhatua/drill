@@ -35,6 +35,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
+import java.sql.SQLTimeoutException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -49,14 +50,17 @@ public class QueryWrapper {
   private final String query;
   private final String queryType;
   private final int autoLimitRowCount;
+  private final int timeoutInSeconds;
 
   private static MemoryMXBean memMXBean = ManagementFactory.getMemoryMXBean();
 
   @JsonCreator
-  public QueryWrapper(@JsonProperty("query") String query, @JsonProperty("queryType") String queryType, @JsonProperty("autoLimit") String autoLimit) {
+  public QueryWrapper(@JsonProperty("query") String query, @JsonProperty("queryType") String queryType,
+      @JsonProperty("autoLimit") String autoLimit, @JsonProperty("autoTimeout") String autoTimeout) {
     this.query = query;
     this.queryType = queryType.toUpperCase();
     this.autoLimitRowCount = autoLimit != null && autoLimit.matches("[0-9]+") ? Integer.valueOf(autoLimit) : 0;
+    this.timeoutInSeconds = autoTimeout != null && autoTimeout.matches("[0-9]+") ? Integer.valueOf(autoTimeout) : 0;
   }
 
   public String getQuery() {
@@ -76,8 +80,10 @@ public class QueryWrapper {
         .setPlan(getQuery())
         .setResultsMode(QueryResultsMode.STREAM_FULL)
         .setAutolimitRowcount(autoLimitRowCount)
+//        .setTimeoutInSeconds(autoTimeoutInSeconds)
         .build();
 
+    //Auto Limit
     int defaultMaxRows = webUserConnection.getSession().getOptions().getOption(ExecConstants.QUERY_MAX_ROWS).num_val.intValue();
     int maxRows;
     if (autoLimitRowCount > 0 && defaultMaxRows > 0) {
@@ -87,11 +93,22 @@ public class QueryWrapper {
     }
     webUserConnection.setAutoLimitRowCount(maxRows);
 
+    //Timeout
+    int defaultTimeout = webUserConnection.getSession().getOptions().getOption(ExecConstants.QUERY_TIMEOUT).num_val.intValue();
+    int maxDuration;
+    if (timeoutInSeconds > 0 && defaultTimeout > 0) {
+      maxDuration = Math.min(timeoutInSeconds, defaultTimeout);
+    } else {
+      maxDuration = Math.max(timeoutInSeconds, defaultTimeout);
+    }
+    int pendingTimeout = maxDuration;
+
     // Submit user query to Drillbit work queue.
     final QueryId queryId = workManager.getUserWorker().submitWork(webUserConnection, runQuery);
 
     boolean isComplete = false;
     boolean nearlyOutOfHeapSpace = false;
+    boolean isTimedOut = false;
     float usagePercent = getHeapUsage();
 
     // Wait until the query execution is complete or there is error submitting the query
@@ -104,7 +121,13 @@ public class QueryWrapper {
       if (usagePercent >  HEAP_MEMORY_FAILURE_THRESHOLD) {
         nearlyOutOfHeapSpace = true;
       }
-    } while (!isComplete && !nearlyOutOfHeapSpace);
+      //Decrement counter
+      if (maxDuration > 0) {
+        if (--pendingTimeout <= 0 ) {
+          isTimedOut = true;
+        }
+      }
+    } while (!isComplete && !nearlyOutOfHeapSpace && !isTimedOut);
 
     //Fail if nearly out of heap space
     if (nearlyOutOfHeapSpace) {
@@ -118,6 +141,17 @@ public class QueryWrapper {
         .addToEventQueue(QueryState.FAILED, almostOutOfHeapException);
       //Return NearlyOutOfHeap exception
       throw almostOutOfHeapException;
+    }
+
+    //Fail if nearly out of heap space
+    if (isTimedOut) {
+      UserException timeoutException = UserException.resourceError(
+          new SQLTimeoutException("Query timed out in " + maxDuration + " seconds")).build(logger);
+      //Add event
+      workManager.getBee().getForemanForQueryId(queryId)
+        .addToEventQueue(QueryState.FAILED, timeoutException);
+      //Return Timeout exception
+      throw timeoutException;
     }
 
     logger.trace("Query {} is completed ", queryId);

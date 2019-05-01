@@ -84,10 +84,11 @@ public class QueryResources {
   @Produces(MediaType.TEXT_HTML)
   public Viewable submitQuery(@FormParam("query") String query,
                               @FormParam("queryType") String queryType,
-                              @FormParam("autoLimit") String autoLimit) throws Exception {
+                              @FormParam("autoLimit") String autoLimit,
+                              @FormParam("autoTimeout") String autoTimeout) throws Exception {
     try {
       final String trimmedQueryString = CharMatcher.is(';').trimTrailingFrom(query.trim());
-      final QueryResult result = submitQueryJSON(new QueryWrapper(trimmedQueryString, queryType, autoLimit));
+      final QueryResult result = submitQueryJSON(new QueryWrapper(trimmedQueryString, queryType, autoLimit, autoTimeout));
       List<Integer> rowsPerPageValues = work.getContext().getConfig().getIntList(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_ROWS_PER_PAGE_VALUES);
       Collections.sort(rowsPerPageValues);
       final String rowsPerPageValuesAsStr = Joiner.on(",").join(rowsPerPageValues);
@@ -105,6 +106,8 @@ public class QueryResources {
     private final boolean onlyImpersonationEnabled;
     private final boolean autoLimitEnabled;
     private final int defaultRowsAutoLimited;
+    private final boolean timeoutEnabled;
+    private final int defaultTimeoutInSeconds;
 
     public QueryPage(WorkManager work) {
       DrillConfig config = work.getContext().getConfig();
@@ -112,6 +115,8 @@ public class QueryResources {
       onlyImpersonationEnabled = WebServer.isOnlyImpersonationEnabled(config);
       autoLimitEnabled = config.getBoolean(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_AUTOLIMIT_CHECKED);
       defaultRowsAutoLimited = config.getInt(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_AUTOLIMIT_ROWS);
+      timeoutEnabled = config.getBoolean(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_TIMEOUT_CHECKED);
+      defaultTimeoutInSeconds = config.getInt(ExecConstants.HTTP_WEB_CLIENT_RESULTSET_TIMEOUT_SECONDS);
     }
 
     public boolean isOnlyImpersonationEnabled() {
@@ -124,6 +129,14 @@ public class QueryResources {
 
     public int getDefaultRowsAutoLimited() {
       return defaultRowsAutoLimited;
+    }
+
+    public boolean isTimeoutEnabled() {
+      return timeoutEnabled;
+    }
+
+    public int getDefaultTimeoutSeconds() {
+      return defaultTimeoutInSeconds;
     }
   }
 
