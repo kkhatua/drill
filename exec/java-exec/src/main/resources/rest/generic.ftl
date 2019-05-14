@@ -43,25 +43,40 @@
     <!-- Using HTML5 WebSession to store root path. All links will be in reference to this -->
     <script>
     // Discover Drill Service Root
-    function discoverServiceRoot() {
+    function discoverServiceRoot(callerName) {
+      var pathnameToken=location.pathname.split("/");
+      var tokenCount = pathnameToken.length;
+      console.log("Tokens#:["+callerName+"]: "+tokenCount);
+      var testPathPrefix =location.protocol+"//"+location.host;
+      var token;
       jQuery.ajaxSetup({async:false});
-      var absUrl = new URL(location.protocol+"//"+location.host + location.pathname.replace(/\/$/, "") + "/${rootDepth}/..");
-      console.log("absUrl = " + absUrl.href);
-	  var testPath = absUrl.href+"state";
-      console.log("testPath = " + testPath);
-      $.get(testPath, function(data, status) {
-        console.log("Yahoooo:: Data: " + data + " ["+status+"] for => " + testPath);
-        sessionStorage.drillSvcRoot = absUrl.href;
-      });
+      for (token in pathnameToken) {
+          testPathPrefix += (token > 0 ? "/" : "") + pathnameToken[token];
+          var testPath = testPathPrefix + (testPathPrefix.charAt(testPathPrefix.length-1) == "/" ? "" : "/") + "state";
+          console.log(token + ". Testing..["+callerName+"].. " + testPath);
+          $.get(testPath, function(data, status) {
+            if (typeof data === "object") {
+              sessionStorage.drillSvcRoot = testPath.substring(0, testPath.lastIndexOf("/") + 1);
+              console.log("SUCCESS:: Data: " + data + " ["+status+"] for => " + sessionStorage.drillSvcRoot);
+            }
+          });
+		  var currServiceRoot = sessionStorage.getItem("drillSvcRoot");
+		  if (currServiceRoot !== null && (typeof currServiceRoot !== 'undefined')) {
+            break;
+		  }
+      }
       jQuery.ajaxSetup({async:true});
       //dBug::
-      console.log("Drill BASE >-> " + sessionStorage.drillSvcRoot);
-	}
+      console.log("Drill BASE >-"+callerName+"-> " + sessionStorage.drillSvcRoot);
+    }
+
 
     var testPathPrefix = location.protocol+"//"+location.host;
     if (typeof(Storage) !== "undefined") {
-	  if (!sessionStorage.drillSvcRoot || sessionStorage.drillSvcRoot === "undefined" || !sessionStorage.drillSvcRoot.startsWith(testPathPrefix)) {
-        discoverServiceRoot();
+      if (!sessionStorage.drillSvcRoot || sessionStorage.drillSvcRoot === "undefined" || !sessionStorage.drillSvcRoot.startsWith(testPathPrefix)) {
+        console.log("CALL discoverServiceRoot() during pgLoad");
+        discoverServiceRoot("pgLoad");
+        console.log("DONE discoverServiceRoot() during pgLoad");
       }
     } else {
       alert("Sorry, your browser does not support web storage. Please use an HTML5+ browser");
@@ -69,10 +84,16 @@
 
     // Translate to absolute paths for Javascript
     function makePath(path) {
-	  //Rediscover if not
-	  if (sessionStorage.drillSvcRoot === "undefined") {
-	    discoverServiceRoot();
-	  }
+      //Rediscover if not
+      var serviceRoot = sessionStorage.getItem("drillSvcRoot");
+      //if (!sessionStorage.drillSvcRoot || sessionStorage.drillSvcRoot === "undefined") {
+      if (serviceRoot === null || (typeof serviceRoot === 'undefined')) {
+        console.log("CALL discoverServiceRoot() for "+path + " ["+new Date().getTime()+"]");
+        pauseFor(3000);
+        discoverServiceRoot("mkPath["+path+"]");
+        //setTimeout(discoverServiceRoot, 3000); //Wait 3sec if required
+        console.log("DONE discoverServiceRoot() for "+path + " ["+new Date().getTime()+"]");
+      }
       var newPath = sessionStorage.drillSvcRoot + path;
       if (path.startsWith("/")) {
         newPath = sessionStorage.drillSvcRoot + path.substr(1);
@@ -80,6 +101,15 @@
       //dBug::
       console.log("mkpath:: "+ newPath)
       return newPath;
+    }
+
+    // Crude pause
+    function pauseFor(pauseInMsec){
+      var start = new Date().getTime();
+      var end = start;
+      while(end < start + pauseInMsec) {
+        end = new Date().getTime();
+      }
     }
     </script>
 
