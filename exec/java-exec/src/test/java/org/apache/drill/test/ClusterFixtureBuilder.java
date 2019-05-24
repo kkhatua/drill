@@ -252,6 +252,8 @@ public class ClusterFixtureBuilder {
    */
   public ClusterFixtureBuilder saveProfiles() {
     configProperty(ExecConstants.SYS_STORE_PROVIDER_LOCAL_ENABLE_WRITE, true);
+    configProperty(ExecConstants.PROFILES_STORE_INDEX_ENABLED, false);
+    configProperty(ExecConstants.PROFILES_STORE_INDEX_FORMAT, "");
     systemOption(ExecConstants.ENABLE_QUERY_PROFILE_OPTION, true);
     systemOption(ExecConstants.QUERY_PROFILE_DEBUG_OPTION, true);
     return this;

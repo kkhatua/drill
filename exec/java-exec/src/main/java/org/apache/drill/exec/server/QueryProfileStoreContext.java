@@ -29,6 +29,7 @@ import org.apache.drill.exec.proto.UserBitShared.QueryProfile;
 import org.apache.drill.exec.store.sys.PersistentStore;
 import org.apache.drill.exec.store.sys.PersistentStoreConfig;
 import org.apache.drill.exec.store.sys.PersistentStoreProvider;
+import org.apache.drill.exec.store.sys.store.LocalPersistentStore;
 
 public class QueryProfileStoreContext {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(QueryProfileStoreContext.class);
@@ -53,6 +54,10 @@ public class QueryProfileStoreContext {
 
     try {
       completedProfiles = storeProvider.getOrCreateStore(profileStoreConfig);
+      //Apply Drill Config for Index path and cache sizes
+      if (completedProfiles instanceof LocalPersistentStore<?>) {
+        ((LocalPersistentStore<?>) completedProfiles).applyProfilesConfig(config);
+      }
     } catch (final Exception e) {
       throw new DrillRuntimeException(e);
     }
