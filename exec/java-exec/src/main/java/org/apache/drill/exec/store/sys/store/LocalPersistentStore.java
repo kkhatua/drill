@@ -45,6 +45,7 @@ import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.proto.UserBitShared.QueryId;
 import org.apache.drill.exec.proto.UserBitShared.QueryProfile;
 import org.apache.drill.exec.proto.helper.QueryIdHelper;
+import org.apache.drill.exec.server.QueryProfileStoreContext;
 import org.apache.drill.exec.store.dfs.DrillFileSystem;
 import org.apache.drill.exec.util.DrillFileSystemUtil;
 import org.apache.drill.exec.store.sys.BasePersistentStore;
@@ -88,12 +89,19 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
   private final CacheLoader<String, V> cacheLoader;
   private final LoadingCache<String, V> deserializedVCache;
   private boolean isProfileStore;
+  private int callCount;
 
   public LocalPersistentStore(DrillFileSystem fs, Path base, PersistentStoreConfig<V> config) {
+    callCount = 0;
     this.basePath = new Path(base, config.getName());
+    if (config.getName() == QueryProfileStoreContext.PROFILES) {
+      isProfileStore = true;
+    }
+
     this.config = config;
     this.fs = fs;
     try {
+      System.out.println("Basepath created for "+config.getName()+" : " + basePath);
       mkdirs(getBasePath());
     } catch (IOException e) {
       throw new RuntimeException("Failure setting pstore configuration path.");
@@ -115,20 +123,33 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
       }
     };
 
-    //Defining Cache loader for handling missing entries
-    this.cacheLoader = new CacheLoader<String, V>() {
+    this.sysFileSuffixFilter = new PathFilter() {
       @Override
-      public V load(String srcPathAsStr) {
-        //Cache miss to force loading from FS
-        return deserializeFromFileSystem(srcPathAsStr);
+      public boolean accept(Path path) {
+        return path.getName().endsWith(DRILL_SYS_FILE_SUFFIX);
       }
     };
 
-    //Creating the cache
-    this.deserializedVCache = CacheBuilder.newBuilder()
-        .initialCapacity(Math.max(deserializedCacheCapacity/5, 20)) //startingCapacity: 20% or 20
-        .maximumSize(deserializedCacheCapacity)
-        .build(cacheLoader);
+    // Initialize cache for immutable profile store
+    if (isProfileStore) {
+      //Defining Cache loader for handling missing entries
+      this.cacheLoader = new CacheLoader<String, V>() {
+        @Override
+        public V load(String srcPathAsStr) {
+          //Cache miss to force loading from FS
+          return deserializeFromFileSystem(srcPathAsStr);
+        }
+      };
+
+      //Creating the cache
+      this.deserializedVCache = CacheBuilder.newBuilder()
+          .initialCapacity(Math.max(deserializedCacheCapacity/5, 20)) //startingCapacity: 20% or 20
+          .maximumSize(deserializedCacheCapacity)
+          .build(cacheLoader);
+    } else {
+      this.cacheLoader = null;
+      deserializedVCache = null;
+    }
   }
 
   public Path getBasePath() {
@@ -141,7 +162,12 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
   }
 
   private void mkdirs(Path path) throws IOException {
+    System.out.println("[LocalPStore.mkdirs] Contents of " + path.toUri());
     fs.mkdirs(path);
+    for (FileStatus entry : fs.listStatus(path)) {
+      System.out.println("Entry : " + entry.getPath().toUri());
+    }
+
   }
 
   public static Path getLogDir() {
@@ -248,11 +274,27 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
 
   @Override
   public V get(String key) {
+    callCount++;
+    boolean dBug = false;
+    if (key.startsWith("planner.store.parquet.rowgroup.filter.pushdown")) {
+      dBug=true;
+      System.out.println("Got call #"+callCount+" for get("+key+")");
+      for (StackTraceElement x : Thread.currentThread().getStackTrace()) {
+        System.out.println("\t"+x);
+      }
+    }
     Path actualPath = makePath(key);
     try {
       if (!fs.exists(actualPath)) {
+        if (dBug) {
+          System.out.println("Could not find " + actualPath.toUri());
+        }
+
         //For Non-Profile PStore
         if (!isProfileStore || (indexPathPattern == null && indexPathPattern == "")) {
+          if (dBug) {
+            System.out.println("returning null");
+          }
           return null;
         }
         //Generate paths within upper and lower bounds to test
@@ -266,7 +308,12 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    return deserializedVCache.getUnchecked(actualPath.toString());
+    //This will not capture updates to cache if used for mutable on disk values
+    if (isProfileStore) {
+      return deserializedVCache.getUnchecked(actualPath.toString());
+    } else {
+      return deserializeFromFileSystem(actualPath.toString());
+    }
   }
 
   @Override
@@ -430,8 +477,6 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
 
   // Applies config settings for storing profiles (usually called right after store init)
   public void applyProfilesConfig(DrillConfig drillConfig) {
-    isProfileStore = true;
-
     deserializedCacheCapacity = drillConfig.getInt(ExecConstants.PROFILES_STORE_CACHE_SIZE);
 
     indexPathPattern = drillConfig.getString(ExecConstants.PROFILES_STORE_INDEX_FORMAT);
@@ -441,13 +486,6 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
           indexPathPattern.contains("M") ? IncrementType.Month :
             indexPathPattern.contains("y") ? IncrementType.Year : null;
     indexedPathFormat = new SimpleDateFormat(indexPathPattern);
-
-    this.sysFileSuffixFilter = new PathFilter() {
-      @Override
-      public boolean accept(Path path) {
-        return path.getName().endsWith(DRILL_SYS_FILE_SUFFIX);
-      }
-    };
   }
 
   //Enumerator used for date increment during path discovery

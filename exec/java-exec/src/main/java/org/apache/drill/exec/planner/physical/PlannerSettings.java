@@ -394,7 +394,9 @@ public class PlannerSettings implements Context{
   }
 
   public boolean isParquetRowGroupFilterPushdownPlanningEnabled() {
-    return options.getOption(PARQUET_ROWGROUP_FILTER_PUSHDOWN_PLANNING);
+    boolean isParquetRowGroupFilterPushdownPlanningEnabled = options.getOption(PARQUET_ROWGROUP_FILTER_PUSHDOWN_PLANNING);
+    System.out.println("isParquetRowGroupFilterPushdownPlanningEnabled :: " + isParquetRowGroupFilterPushdownPlanningEnabled);
+    return isParquetRowGroupFilterPushdownPlanningEnabled;
   }
 
   public long getParquetRowGroupFilterPushDownThreshold() {

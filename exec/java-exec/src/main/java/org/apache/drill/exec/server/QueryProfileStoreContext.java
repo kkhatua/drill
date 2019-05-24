@@ -34,7 +34,7 @@ import org.apache.drill.exec.store.sys.store.LocalPersistentStore;
 public class QueryProfileStoreContext {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(QueryProfileStoreContext.class);
 
-  private static final String PROFILES = "profiles";
+  public static final String PROFILES = "profiles";
 
   private static final String RUNNING = "running";
 
