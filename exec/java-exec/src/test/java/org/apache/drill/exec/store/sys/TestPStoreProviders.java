@@ -89,6 +89,10 @@ public class TestPStoreProviders extends TestWithZookeeper {
     File optionsDir = new File(dirTestWatcher.getStoreDir(), "sys.options");
     optionsDir.mkdirs();
     org.apache.commons.io.FileUtils.copyDirectory(localOptionsResources, optionsDir);
+    System.out.println("COntents of " + optionsDir.getAbsolutePath() );
+    for (String entry : optionsDir.list()) {
+      System.out.println("Entry : " + entry);
+    }
 
     try (ClusterFixture cluster = builder.build();
          ClientFixture client = cluster.clientFixture()) {
