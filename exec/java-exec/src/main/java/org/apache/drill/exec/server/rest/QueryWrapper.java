@@ -70,12 +70,6 @@ public class QueryWrapper {
   }
 
   public QueryResult run(final WorkManager workManager, final WebUserConnection webUserConnection) throws Exception {
-    final RunQuery runQuery = RunQuery.newBuilder().setType(getType())
-        .setPlan(getQuery())
-        .setResultsMode(QueryResultsMode.STREAM_FULL)
-        .setAutolimitRowcount(autoLimitRowCount)
-        .build();
-
     int defaultMaxRows = webUserConnection.getSession().getOptions().getOption(ExecConstants.QUERY_MAX_ROWS).num_val.intValue();
     int maxRows;
     if (autoLimitRowCount > 0 && defaultMaxRows > 0) {
@@ -83,7 +77,14 @@ public class QueryWrapper {
     } else {
       maxRows = Math.max(autoLimitRowCount, defaultMaxRows);
     }
-    webUserConnection.setAutoLimitRowCount(maxRows);
+
+    final RunQuery runQuery = RunQuery.newBuilder().setType(getType())
+        .setPlan(getQuery())
+        .setResultsMode(QueryResultsMode.STREAM_FULL)
+        .setAutolimitRowcount(maxRows)
+        .build();
+
+    //Needed? webUserConnection.setAutoLimitRowCount(maxRows);
 
     // Heap usage threshold/trigger to provide resiliency on web server for queries submitted via HTTP
     double memoryFailureThreshold = workManager.getContext().getConfig().getDouble(ExecConstants.HTTP_MEMORY_HEAP_FAILURE_THRESHOLD);

@@ -121,6 +121,7 @@ public class DrillClient implements Closeable, ConnectionThrottle {
   private EventLoopGroup eventLoopGroup;
   private ExecutorService executor;
   private String clientName = DEFAULT_CLIENT_NAME;
+  private int autoLimitRowCount;
 
   public DrillClient() throws OutOfMemoryException {
     this(DrillConfig.create(), false);
@@ -170,6 +171,8 @@ public class DrillClient implements Closeable, ConnectionThrottle {
     this.reconnectTimes = config.getInt(ExecConstants.BIT_RETRY_TIMES);
     this.reconnectDelay = config.getInt(ExecConstants.BIT_RETRY_DELAY);
     this.supportComplexTypes = config.getBoolean(ExecConstants.CLIENT_SUPPORT_COMPLEX_TYPES);
+    this.autoLimitRowCount = config.getInt("drill.exec.query.max_rows"/*ExecConstants.QUERY_MAX_ROWS*/); //Coming out of drillConfig (client side default)
+    logger.info("drill.exec.query.max_rows = {}", autoLimitRowCount);
   }
 
   public DrillConfig getConfig() {
@@ -577,7 +580,9 @@ public class DrillClient implements Closeable, ConnectionThrottle {
     checkArgument(type == QueryType.LOGICAL || type == QueryType.PHYSICAL || type == QueryType.SQL,
         String.format("Only query types %s, %s and %s are supported in this API",
             QueryType.LOGICAL, QueryType.PHYSICAL, QueryType.SQL));
-    final UserProtos.RunQuery query = newBuilder().setResultsMode(STREAM_FULL).setType(type).setPlan(plan).build();
+    final UserProtos.RunQuery query = newBuilder().setResultsMode(STREAM_FULL).setType(type)
+        .setAutolimitRowcount(autoLimitRowCount)
+        .setPlan(plan).build();
     final ListHoldingResultsListener listener = new ListHoldingResultsListener(query);
     client.submitQuery(listener, query);
     return listener.getResults();
@@ -627,6 +632,7 @@ public class DrillClient implements Closeable, ConnectionThrottle {
       throw new RpcException(e);
     }
     final UserProtos.RunQuery query = newBuilder().setType(type).addAllFragments(planFragments)
+        .setAutolimitRowcount(autoLimitRowCount)
         .setPlan(fragmentsToJsonString)
         .setResultsMode(STREAM_FULL).build();
     client.submitQuery(resultsListener, query);
@@ -783,6 +789,7 @@ public class DrillClient implements Closeable, ConnectionThrottle {
     final RunQuery runQuery = newBuilder()
         .setResultsMode(STREAM_FULL)
         .setType(QueryType.PREPARED_STATEMENT)
+        .setAutolimitRowcount(autoLimitRowCount)
         .setPreparedStatementHandle(preparedStatementHandle)
         .build();
     client.submitQuery(resultsListener, runQuery);
@@ -802,6 +809,7 @@ public class DrillClient implements Closeable, ConnectionThrottle {
     final RunQuery runQuery = newBuilder()
         .setResultsMode(STREAM_FULL)
         .setType(QueryType.PREPARED_STATEMENT)
+        .setAutolimitRowcount(autoLimitRowCount)
         .setPreparedStatementHandle(preparedStatementHandle)
         .build();
 
@@ -818,7 +826,9 @@ public class DrillClient implements Closeable, ConnectionThrottle {
    * @param  plan  the plan to execute
    */
   public void runQuery(QueryType type, String plan, UserResultsListener resultsListener) {
-    client.submitQuery(resultsListener, newBuilder().setResultsMode(STREAM_FULL).setType(type).setPlan(plan).build());
+    client.submitQuery(resultsListener, newBuilder().setResultsMode(STREAM_FULL).setType(type)
+        .setAutolimitRowcount(autoLimitRowCount)
+        .setPlan(plan).build());
   }
 
   private class ListHoldingResultsListener implements UserResultsListener {

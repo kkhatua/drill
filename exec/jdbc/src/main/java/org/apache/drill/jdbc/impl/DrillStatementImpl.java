@@ -37,6 +37,7 @@ import org.apache.drill.jdbc.DrillStatement;
 // methods for compatibility.)
 public class DrillStatementImpl extends AvaticaStatement implements DrillStatement,
                                                              DrillRemoteStatement {
+  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillStatementImpl.class);
 
   private final DrillConnectionImpl connection;
 
@@ -276,5 +277,14 @@ public class DrillStatementImpl extends AvaticaStatement implements DrillStateme
   public void setLargeMaxRows(long maxRowCount) throws SQLException {
     super.setLargeMaxRows(maxRowCount);
     execute("ALTER SESSION SET `" + ExecConstants.QUERY_MAX_ROWS + "`=" + maxRowCount);
+    logger.info("Executed AltSess = {}", maxRowCount);
+    logger.info("getMaxRows = {}", super.getMaxRows());
+    logger.info("getLargeMaxRows = {}", super.getLargeMaxRows());
+    StackTraceElement[] elements = Thread.currentThread().getStackTrace();
+    for (int i = 1; i < elements.length; i++) {
+      StackTraceElement s = elements[i];
+      logger.info("\tat " + s.getClassName() + "." + s.getMethodName()
+          + "(" + s.getFileName() + ":" + s.getLineNumber() + ")");
+    }
   }
 }

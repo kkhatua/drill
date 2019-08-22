@@ -112,6 +112,7 @@ public class QueryContext implements AutoCloseable, OptimizerRulesContext, Schem
     int sessionMaxRowCount = queryOptions.getOption(ExecConstants.QUERY_MAX_ROWS).num_val.intValue();
     int defaultMaxRowCount = queryOptions.getOptionManager(OptionScope.SYSTEM).getOption(ExecConstants.QUERY_MAX_ROWS).num_val.intValue();
     int autoLimitRowCount = 0;
+    logger.info("sessionMaxRowCount = " + sessionMaxRowCount + " && defaultMaxRowCount = " + defaultMaxRowCount  );
     if (sessionMaxRowCount > 0 && defaultMaxRowCount > 0) {
       autoLimitRowCount = Math.min(sessionMaxRowCount, defaultMaxRowCount);
     } else {
@@ -121,9 +122,9 @@ public class QueryContext implements AutoCloseable, OptimizerRulesContext, Schem
       // Required to indicate via OptionScope=QueryLevel that session limit is overridden by system limit
       queryOptions.setLocalOption(ExecConstants.QUERY_MAX_ROWS, autoLimitRowCount);
     }
-    if (autoLimitRowCount > 0) {
-      logger.debug("ResultSet size is auto-limited to {} rows [Session: {} / Default: {}]", autoLimitRowCount, sessionMaxRowCount, defaultMaxRowCount);
-    }
+//    if (autoLimitRowCount > 0) {
+      logger./*debug*/info("ResultSet size is auto-limited to {} rows [Session: {} / Default: {}]", autoLimitRowCount, sessionMaxRowCount, defaultMaxRowCount);
+//    }
 
     queryContextInfo = Utilities.createQueryContextInfo(session.getDefaultSchemaPath(), session.getSessionId());
 
