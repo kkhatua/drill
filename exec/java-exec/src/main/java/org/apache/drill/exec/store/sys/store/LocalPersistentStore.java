@@ -287,7 +287,7 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
     try {
       if (!fs.exists(actualPath)) {
         if (dBug) {
-          System.out.println("Could not find " + actualPath.toUri());
+          System.out.println("Could not find ["+fs.getScheme()+"]" + actualPath.toUri());
         }
 
         //For Non-Profile PStore
