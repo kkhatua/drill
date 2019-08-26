@@ -89,13 +89,21 @@ public class TestPStoreProviders extends TestWithZookeeper {
     File optionsDir = new File(dirTestWatcher.getStoreDir(), "sys.options");
     optionsDir.mkdirs();
     org.apache.commons.io.FileUtils.copyDirectory(localOptionsResources, optionsDir);
-    System.out.println("COntents of " + optionsDir.getAbsolutePath() );
-    for (String entry : optionsDir.list()) {
-      System.out.println("Entry : " + entry);
+    System.out.println("Src " + localOptionsResources.getAbsolutePath() );
+    for (String entry : localOptionsResources.list()) {
+      System.out.println("src: " + entry);
     }
-
+    System.out.println("COntents of " + optionsDir.getAbsolutePath() );
+    for (File entry : optionsDir.listFiles()) {
+      System.out.println("Entry : " + entry.toURI());
+    }
+    System.out.println("Exists before test? " + optionsDir.exists() + " -> " + optionsDir.list().length);
     try (ClusterFixture cluster = builder.build();
          ClientFixture client = cluster.clientFixture()) {
+      for (File entry : optionsDir.listFiles()) {
+        System.out.println("3ntry : " + entry.toURI());
+      }
+
       String parquetPushdown = client.queryBuilder().
         sql("SELECT val FROM sys.%s where name='%s'",
           SystemTable.OPTIONS.getTableName(),
@@ -108,8 +116,16 @@ public class TestPStoreProviders extends TestWithZookeeper {
           ExecConstants.MAX_WIDTH_GLOBAL_KEY).
         singletonString();
 
+      System.out.println("Exists AFTER test? " + optionsDir.exists() + " -> " + optionsDir.list().length);
+      System.out.println("COntents of " + optionsDir.getAbsolutePath() );
+      for (File entry : optionsDir.listFiles()) {
+        System.out.println("Entry : " + entry.toURI());
+      }
+
+
       Assert.assertEquals("30000", parquetPushdown);
       Assert.assertEquals("3333", plannerWidth);
+
     }
   }
 
