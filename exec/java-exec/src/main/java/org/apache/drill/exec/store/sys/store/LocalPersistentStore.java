@@ -289,6 +289,9 @@ public class LocalPersistentStore<V> extends BasePersistentStore<V> {
         if (dBug) {
           System.out.println("Parent exists? " + fs.exists(actualPath.getParent()));
           System.out.println("Could not find ["+fs.getScheme()+"]" + actualPath.toUri());
+          File directFileHandle = new File(actualPath.toUri());
+          System.out.println("File(..) exists? " + directFileHandle.exists());
+
         }
 
         //For Non-Profile PStore
