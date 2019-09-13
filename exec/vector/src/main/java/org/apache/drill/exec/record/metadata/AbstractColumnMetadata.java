@@ -104,6 +104,7 @@ public abstract class AbstractColumnMetadata extends AbstractPropertied implemen
     mode = from.mode;
     precision = from.precision;
     scale = from.scale;
+    setProperties(from.properties());
   }
 
   @Override
@@ -145,6 +146,11 @@ public abstract class AbstractColumnMetadata extends AbstractPropertied implemen
 
   @Override
   public boolean isMultiList() { return false; }
+
+  @Override
+  public boolean isDict() {
+    return false;
+  }
 
   @Override
   public TupleMetadata mapSchema() { return null; }

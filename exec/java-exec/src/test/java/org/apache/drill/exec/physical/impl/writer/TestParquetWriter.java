@@ -17,29 +17,6 @@
  */
 package org.apache.drill.exec.physical.impl.writer;
 
-import static org.apache.drill.exec.store.parquet.ParquetRecordWriter.DRILL_VERSION_PROPERTY;
-import static org.apache.drill.test.TestBuilder.convertToLocalDateTime;
-import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
-import static org.apache.parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.junit.Assert.assertEquals;
-
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.nio.file.Paths;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.calcite.util.Pair;
 import org.apache.drill.categories.ParquetTest;
 import org.apache.drill.categories.SlowTest;
@@ -49,7 +26,10 @@ import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.fn.interp.TestConstantFolding;
 import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.apache.drill.exec.util.JsonStringArrayList;
+import org.apache.drill.shaded.guava.com.google.common.base.Joiner;
+import org.apache.drill.shaded.guava.com.google.common.collect.ImmutableList;
 import org.apache.drill.test.BaseTestQuery;
+import org.apache.drill.test.TestBuilder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -68,8 +48,31 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import org.apache.drill.shaded.guava.com.google.common.base.Joiner;
-import org.apache.drill.shaded.guava.com.google.common.collect.ImmutableList;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static java.util.Arrays.asList;
+import static org.apache.drill.exec.store.parquet.ParquetRecordWriter.DRILL_VERSION_PROPERTY;
+import static org.apache.drill.exec.util.StoragePluginTestUtils.DFS_TMP_SCHEMA;
+import static org.apache.drill.test.TestBuilder.convertToLocalDateTime;
+import static org.apache.drill.test.TestBuilder.mapOf;
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.junit.Assert.assertEquals;
 
 @RunWith(Parameterized.class)
 @Category({SlowTest.class, ParquetTest.class})
@@ -1269,6 +1272,139 @@ public class TestParquetWriter extends BaseTestQuery {
       resetSessionOption(ExecConstants.PARQUET_WRITER_USE_PRIMITIVE_TYPES_FOR_DECIMALS);
       resetSessionOption(ExecConstants.PARQUET_WRITER_LOGICAL_TYPE_FOR_DECIMALS);
       test("drop table if exists dfs.tmp.%s", tableName);
+    }
+  }
+
+  @Test
+  public void testCtasForList() throws Exception {
+    String tableName = "testCtasForList";
+    try {
+      test("CREATE TABLE `%s`.`%s` AS SELECT l FROM cp.`jsoninput/input2.json`", DFS_TMP_SCHEMA, tableName);
+      testBuilder()
+          .sqlQuery("SELECT * FROM `%s`.`/%s` LIMIT 1", DFS_TMP_SCHEMA, tableName)
+          .unOrdered()
+          .baselineColumns("l")
+          .baselineValues(asList(4L, 2L))
+          .go();
+    } finally {
+      test("DROP TABLE IF EXISTS `%s`.`%s`", DFS_TMP_SCHEMA, tableName);
+    }
+  }
+
+  @Test
+  public void testCtasForRepeatedList() throws Exception {
+    String tableName = "testCtasForRepeatedList";
+    try {
+      test("CREATE TABLE `%s`.`%s` AS SELECT * FROM cp.`jsoninput/repeated_list_bug.json`", DFS_TMP_SCHEMA, tableName);
+      testBuilder()
+          .sqlQuery("SELECT rl FROM `%s`.`/%s`", DFS_TMP_SCHEMA, tableName)
+          .unOrdered()
+          .baselineColumns("rl")
+          .baselineValues(asList(asList(4L, 6L), asList(2L, 3L)))
+          .baselineValues(asList(asList(9L, 7L), asList(4L, 8L)))
+          .go();
+    } finally {
+      test("DROP TABLE IF EXISTS `%s`.`%s`", DFS_TMP_SCHEMA, tableName);
+    }
+  }
+
+  @Test
+  public void testCtasForRepeatedListOfMaps() throws Exception {
+    String tableName = "testCtasForRepeatedListOfMaps";
+    try {
+      test("CREATE TABLE `%s`.`%s` AS SELECT * FROM cp.`jsoninput/repeated_list_of_maps.json`", DFS_TMP_SCHEMA, tableName);
+      testBuilder()
+          .sqlQuery("SELECT * FROM `%s`.`/%s`", DFS_TMP_SCHEMA, tableName)
+          .unOrdered()
+          .baselineColumns("rma")
+          .baselineValues(asList(
+              asList(mapOf("a", 1L, "b", "2"), mapOf("a", 2L, "b", "3")),
+              asList(mapOf("a", 3L, "b", "3"))
+          ))
+          .baselineValues(asList(
+              asList(mapOf("a", 4L, "b", "4"), mapOf("a", 5L, "b", "5"), mapOf("a", 6L, "b", "6")),
+              asList(mapOf("a", 7L, "b", "7"))
+          ))
+          .go();
+    } finally {
+      test("DROP TABLE IF EXISTS `%s`.`%s`", DFS_TMP_SCHEMA, tableName);
+    }
+  }
+
+  @Test
+  public void testCTASWithDictInSelect() throws Exception {
+    String tableName = "table_with_dict";
+    try {
+      test("use dfs.tmp");
+      test("create table %s as select id, mapcol from cp.`store/parquet/complex/map/parquet/000000_0.parquet`", tableName);
+      testBuilder()
+          .sqlQuery("select * from %s", tableName)
+          .unOrdered()
+          .baselineColumns("id", "mapcol")
+          .baselineValues(1, TestBuilder.mapOfObject("b", 6, "c", 7))
+          .baselineValues(3, TestBuilder.mapOfObject("b", null, "c", 8, "d", 9, "e", 10))
+          .baselineValues(5, TestBuilder.mapOfObject("b", 6, "c", 7, "a", 8, "abc4", 9, "bde", 10))
+          .baselineValues(4, TestBuilder.mapOfObject("a", 3, "b", 4, "c", 5))
+          .baselineValues(2, TestBuilder.mapOfObject("a", 1, "b", 2, "c", 3))
+          .go();
+    } finally {
+      test("DROP TABLE IF EXISTS %s", tableName);
+    }
+  }
+
+  @Test
+  public void testCTASWithRepeatedDictInSelect() throws Exception {
+    String tableName = "table_with_dict_array";
+    try {
+      test("use dfs.tmp");
+      test("create table %s as select id, map_array from cp.`store/parquet/complex/map/parquet/000000_0.parquet`", tableName);
+      testBuilder()
+          .sqlQuery("select * from %s", tableName)
+          .unOrdered()
+          .baselineColumns("id", "map_array")
+          .baselineValues(
+              4,
+              TestBuilder.listOf(
+                  TestBuilder.mapOfObject(1L, 2, 10L, 1, 42L, 3, 31L, 4),
+                  TestBuilder.mapOfObject(-1L, 2, 3L, 1, 5L, 3, 54L, 4, 55L, 589, -78L, 2),
+                  TestBuilder.mapOfObject(1L, 124, 3L, 1, -4L, 2, 19L, 3, 5L, 3, 9L, 1),
+                  TestBuilder.mapOfObject(1L, 89, 2L, 1, 3L, 3, 4L, 21, 5L, 12, 6L, 34),
+                  TestBuilder.mapOfObject(1L, -25, 3L, 1, 5L, 3, 6L, 2, 9L, 333, 10L, 344),
+                  TestBuilder.mapOfObject(3L, 222, 4L, 1, 5L, 3, 6L, 2, 7L, 1, 8L, 3),
+                  TestBuilder.mapOfObject(1L, 11, 3L, 12, 5L, 13)
+              )
+          )
+          .baselineValues(
+              1,
+              TestBuilder.listOf(
+                  TestBuilder.mapOfObject(8L, 1, 9L, 2, 523L, 4, 31L, 3),
+                  TestBuilder.mapOfObject(1L, 2, 3L, 1, 5L, 3)
+              )
+          )
+          .baselineValues(
+              3,
+              TestBuilder.listOf(
+                  TestBuilder.mapOfObject(3L, 1),
+                  TestBuilder.mapOfObject(1L, 2)
+              )
+          )
+          .baselineValues(
+              2,
+              TestBuilder.listOf(
+                  TestBuilder.mapOfObject(1L, 1, 2L, 2)
+              )
+          )
+          .baselineValues(
+              5,
+              TestBuilder.listOf(
+                  TestBuilder.mapOfObject(1L, 1, 2L, 2, 3L, 3, 4L, 4),
+                  TestBuilder.mapOfObject(1L, -1, 2L, -2),
+                  TestBuilder.mapOfObject(1L, 4, 2L, 5, 3L, 7)
+              )
+          )
+          .go();
+    } finally {
+      test("DROP TABLE IF EXISTS %s", tableName);
     }
   }
 
